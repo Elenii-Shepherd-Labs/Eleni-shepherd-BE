@@ -10,9 +10,9 @@ export class AuthService {
   async validateUser(googleId: string, email: string, username: string): Promise<User> {
     let user: User | null = await this.userModel.findOne({ googleId });
     if (!user) {
-      user = await this.userModel.create({ googleId, email, username });
+      user = (await this.userModel.create({ googleId, email, username })) as User;
     }
-    return user as User;
+    return user;
   }
 
   async findById(id: string): Promise<User> {
