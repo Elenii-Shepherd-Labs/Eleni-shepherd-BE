@@ -8,11 +8,11 @@ export class AuthService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
   async validateUser(googleId: string, email: string, username: string): Promise<User> {
-    let user = await this.userModel.findOne({ googleId });
+    let user: User | null = await this.userModel.findOne({ googleId });
     if (!user) {
       user = await this.userModel.create({ googleId, email, username });
     }
-    return user;
+    return user as User;
   }
 
   async findById(id: string): Promise<User> {
