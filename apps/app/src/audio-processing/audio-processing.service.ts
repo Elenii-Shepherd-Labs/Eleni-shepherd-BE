@@ -8,6 +8,11 @@ import { AudioBuffer } from './interfaces/audio-buffer.interface';
 export class AudioProcessingService {
   private readonly logger = new Logger(AudioProcessingService.name);
   private audioBuffers: Map<string, AudioBuffer> = new Map();
+  // sessionId -> settings
+  private sessionSettings: Map<
+    string,
+    { alwaysListen: boolean; awake: boolean; tapToListenExpiresAt?: number }
+  > = new Map();
   private readonly SILENCE_THRESHOLD_MS: number;
   private readonly MIN_AUDIO_LENGTH_BYTES: number;
 
@@ -27,7 +32,7 @@ export class AudioProcessingService {
   ): Promise<{ transcript?: string; isFinal: boolean }> {
     try {
       let buffer = this.audioBuffers.get(sessionId);
-      
+
       if (!buffer) {
         buffer = {
           sessionId,
@@ -40,6 +45,8 @@ export class AudioProcessingService {
 
       const hasVoice = this.sttService.detectVoiceActivity(audioChunk);
 
+      const settings = this.sessionSettings.get(sessionId) || { alwaysListen: false, awake: false };
+
       if (hasVoice) {
         buffer.chunks.push(audioChunk);
         buffer.totalBytes += audioChunk.length;
@@ -48,6 +55,28 @@ export class AudioProcessingService {
         this.logger.debug(
           `Added audio chunk: ${audioChunk.length} bytes. Total: ${buffer.totalBytes}`,
         );
+
+        const now = Date.now();
+        const tapActive = (settings.tapToListenExpiresAt || 0) > now;
+
+        // Quick wake-word check for always-listen mode
+        if (settings.alwaysListen && !settings.awake && buffer.totalBytes >= this.MIN_AUDIO_LENGTH_BYTES / 4) {
+          try {
+            const candidate = Buffer.concat(buffer.chunks.map((c) => Buffer.from(c)) as unknown as Uint8Array[]);
+            const wakeDetected = await this.sttService.detectWakeWord(candidate);
+
+            if (wakeDetected) {
+              settings.awake = true;
+              this.sessionSettings.set(sessionId, settings);
+              this.logger.log(`Wake word detected for session ${sessionId}`);
+              return { isFinal: false };
+            }
+          } catch (err) {
+            this.logger.warn(`Wake-word check failed: ${err.message}`);
+          }
+        }
+
+        if (tapActive) return { isFinal: false };
 
         return { isFinal: false };
       } else {
@@ -58,13 +87,24 @@ export class AudioProcessingService {
           buffer.totalBytes >= this.MIN_AUDIO_LENGTH_BYTES &&
           silenceDuration >= this.SILENCE_THRESHOLD_MS
         ) {
-          const completeAudio = Buffer.concat(buffer.chunks);
-          
+          const completeAudio = Buffer.concat(buffer.chunks.map((c) => Buffer.from(c)) as unknown as Uint8Array[]);
           this.audioBuffers.delete(sessionId);
 
-          const transcript = await this.sttService.transcribeAudio(
-            completeAudio,
-          );
+          const currentSettings = this.sessionSettings.get(sessionId) || { alwaysListen: false, awake: false };
+          const now = Date.now();
+          const tapActive = (currentSettings.tapToListenExpiresAt || 0) > now;
+
+          if (currentSettings.alwaysListen && !currentSettings.awake && !tapActive) {
+            this.logger.debug(`Ignoring non-wake audio for session ${sessionId} (always-listen waiting)`);
+            return { isFinal: false };
+          }
+
+          const transcript = await this.sttService.transcribeAudio(completeAudio);
+
+          if (currentSettings.awake) {
+            currentSettings.awake = false;
+            this.sessionSettings.set(sessionId, currentSettings);
+          }
 
           return {
             transcript,
@@ -78,6 +118,21 @@ export class AudioProcessingService {
       this.logger.error(`Error processing audio chunk: ${error.message}`);
       throw error;
     }
+  }
+
+  async setAlwaysListening(sessionId: string, enabled: boolean) {
+    const settings = this.sessionSettings.get(sessionId) || { alwaysListen: false, awake: false };
+    settings.alwaysListen = !!enabled;
+    if (!enabled) settings.awake = false;
+    this.sessionSettings.set(sessionId, settings);
+    this.logger.log(`Session ${sessionId} alwaysListen=${settings.alwaysListen}`);
+  }
+
+  async tapToListen(sessionId: string, durationMs: number = 10000) {
+    const settings = this.sessionSettings.get(sessionId) || { alwaysListen: false, awake: false };
+    settings.tapToListenExpiresAt = Date.now() + durationMs;
+    this.sessionSettings.set(sessionId, settings);
+    this.logger.log(`Session ${sessionId} tapToListen for ${durationMs}ms`);
   }
 
   async *textToAudioStream(

@@ -61,6 +61,24 @@ export class SpeechToTextService {
     }
   }
 
+  /**
+   * Detect wake word by transcribing a short audio buffer and checking for the phrase "hey eleni".
+   * This is a simple approach suitable for prototyping. For production, replace with a proper
+   * keyword-spotting model.
+   */
+  async detectWakeWord(audioBuffer: Buffer): Promise<boolean> {
+    try {
+      const text = await this.transcribeAudio(audioBuffer, 'en');
+      if (!text) return false;
+
+      const normalized = text.toLowerCase();
+      return normalized.includes('hey eleni') || normalized.includes('hey, eleni') || normalized.includes('hey eleni');
+    } catch (err) {
+      this.logger.warn(`Wake-word detection failed: ${err.message}`);
+      return false;
+    }
+  }
+
   private mockTranscription(audioBuffer: Buffer): string {
     this.logger.warn('Using mock transcription - no API key configured');
     return `[Mock transcription of ${audioBuffer.length} bytes of audio]`;
