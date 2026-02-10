@@ -7,6 +7,11 @@ import { configuration } from '@app/common/configuration';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-store';
 import { AuthModule } from './auth/auth.module';
+import { ConversationalAiModule } from './conversational-ai/conversational-ai.module';
+import { SpeechToTextModule } from './speech-to-text/speech-to-text.module';
+import { TextToSpeechModule } from './text-to-speech/text-to-speech.module';
+import { LlmModule } from './llm/llm.module';
+import { AudioProcessingModule } from './audio-processing/audio-processing.module';
 
 @Module({
   imports: [
@@ -24,6 +29,11 @@ import { AuthModule } from './auth/auth.module';
     }),
     DatabaseModule,
     AuthModule,
+    ConversationalAiModule,
+    SpeechToTextModule,
+    TextToSpeechModule,
+    LlmModule,
+    AudioProcessingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
