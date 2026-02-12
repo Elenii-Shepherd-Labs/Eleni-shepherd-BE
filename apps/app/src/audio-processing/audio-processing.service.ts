@@ -69,7 +69,17 @@ export class AudioProcessingService {
               settings.awake = true;
               this.sessionSettings.set(sessionId, settings);
               this.logger.log(`Wake word detected for session ${sessionId}`);
-              return { isFinal: false };
+              
+              // Transcribe and return immediately with the wake word
+              const transcript = await this.sttService.transcribeAudio(candidate);
+              
+              // Clear buffer for next utterance
+              this.audioBuffers.delete(sessionId);
+              
+              return {
+                transcript,
+                isFinal: true,
+              };
             }
           } catch (err) {
             this.logger.warn(`Wake-word check failed: ${err.message}`);
