@@ -6,7 +6,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { LlmService } from './llm.service';
-import { GenerateResponseDto } from './dto/message.dto';
+import { GenerateResponseDto } from './dto';
 
 @ApiTags('LLM')
 @Controller('llm')

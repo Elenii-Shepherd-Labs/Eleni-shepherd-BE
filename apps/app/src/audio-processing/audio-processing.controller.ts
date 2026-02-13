@@ -1,41 +1,8 @@
 import { Body, Controller, Post, UploadedFile, UseInterceptors, Logger, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiConsumes, ApiProperty } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { AudioProcessingService } from './audio-processing.service';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { IsString, IsBoolean, IsOptional, IsNumber } from 'class-validator';
-import { Type } from 'class-transformer';
-
-export class ProcessChunkDto {
-	@ApiProperty({ description: 'Session identifier' })
-	@IsString()
-	sessionId: string;
-
-	@ApiProperty({ description: 'Base64-encoded WAV or audio chunk' })
-	@IsString()
-	audioBase64: string; // base64-encoded audio chunk
-
-	@ApiProperty({ description: 'Sample rate (Hz)', required: false })
-	@IsOptional()
-	@Type(() => Number)
-	@IsNumber()
-	sampleRate?: number;
-}
-
-export class AlwaysListenDto {
-	@ApiProperty({ description: 'Session identifier' })
-	@IsString()
-	sessionId: string;
-
-	@ApiProperty({ description: 'Enable or disable always-listen' })
-	@IsBoolean()
-	enabled: boolean;
-}
-
-export class TapToListenDto {
-	@ApiProperty({ description: 'Session identifier' })
-	@IsString()
-	sessionId: string;
-}
+import { ProcessChunkDto, AlwaysListenDto, TapToListenDto } from './dto';
 
 @Controller('audio-processing')
 @ApiTags('audio-processing')

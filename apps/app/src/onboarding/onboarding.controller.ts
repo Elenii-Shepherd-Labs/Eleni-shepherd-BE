@@ -18,10 +18,8 @@ import { TranscriptionService } from './transcription.service';
 import { extname } from 'path';
 import fs from 'fs';
 import { OnboardingService } from './onboarding.service';
-import { SaveNameAsTextDTO } from './saveNameAsText.dto';
-import { SaveFullameDto } from './saveFullame.dto';
+import { SaveNameAsTextDTO, SaveFullNameDto, UploadDto } from './dto';
 import { ApiBody, ApiConsumes, ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { UploadDto } from './upload.dto';
 
 UseGuards(AuthGuard('google'));
 @Controller('onboard')
@@ -64,7 +62,7 @@ export class OnboardingController {
   @ApiConsumes('multipart/form-data')
   @ApiOkResponse({
     description: 'The name has been successfully saved',
-    type: SaveFullameDto,
+    type: SaveFullNameDto,
   })
   async saveNameAsText(
     @Req() req: Request,
@@ -97,9 +95,9 @@ export class OnboardingController {
   @Post('fullname')
   @ApiOkResponse({
     description: 'The name has been successfully saved',
-    type: SaveFullameDto,
+    type: SaveFullNameDto,
   })
-  async saveFullname(@Req() req: Request, @Body() fullname: SaveFullameDto) {
+  async saveFullname(@Req() req: Request, @Body() fullname: SaveFullNameDto) {
     const userId = req.user['id'];
     const newFullname = this.onboardingService.saveFullname(userId, fullname);
     return { newFullname };
