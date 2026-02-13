@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import { Message } from './dto/message.dto';
+import { Message } from './dto';
 
 @Injectable()
 export class LlmService {

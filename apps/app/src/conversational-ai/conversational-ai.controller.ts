@@ -12,7 +12,7 @@ import {
   ProcessMessageDto,
   AddContextDto,
   SessionResponseDto,
-} from './dto/index';
+} from './dto';
 
 @ApiTags('Conversational AI')
 @Controller('conversational-ai')

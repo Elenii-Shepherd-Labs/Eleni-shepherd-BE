@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from '../auth/user.schema';
 import { Model } from 'mongoose';
-import { SaveFullameDto } from './saveFullame.dto';
+import { SaveFullNameDto } from './dto';
 
 @Injectable()
 export class OnboardingService {
@@ -16,7 +16,7 @@ export class OnboardingService {
     return user.fullname;
   }
 
-  async saveFullname(userId: string, fullname: SaveFullameDto) {
+  async saveFullname(userId: string, fullname: SaveFullNameDto) {
     const user = await this.userModel.findByIdAndUpdate(
       userId,
       {

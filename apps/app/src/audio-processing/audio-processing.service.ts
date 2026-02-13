@@ -8,7 +8,7 @@ import { AudioBuffer } from './interfaces/audio-buffer.interface';
 export class AudioProcessingService {
   private readonly logger = new Logger(AudioProcessingService.name);
   private audioBuffers: Map<string, AudioBuffer> = new Map();
-  // sessionId -> settings
+
   private sessionSettings: Map<
     string,
     { alwaysListen: boolean; awake: boolean; tapToListenExpiresAt?: number }

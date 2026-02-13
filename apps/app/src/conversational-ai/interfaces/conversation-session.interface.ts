@@ -1,4 +1,4 @@
-import { Message } from '../../llm/dto/message.dto';
+import { Message } from '../../llm/dto';
 
 export interface ConversationSession {
   sessionId: string;

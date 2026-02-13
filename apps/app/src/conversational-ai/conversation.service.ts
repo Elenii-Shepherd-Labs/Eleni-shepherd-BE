@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { LlmService } from '../llm/llm.service';
-import { Message } from '../llm/dto/message.dto';
+import { Message } from '../llm/dto';
 import { ConversationSession } from './interfaces/conversation-session.interface';
 
 @Injectable()

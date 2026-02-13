@@ -8,7 +8,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { SpeechToTextService } from './speech-to-text.service';
-import { TranscribeAudioDto, TranscriptionResponseDto } from './dto/index';
+import { TranscribeAudioDto, TranscriptionResponseDto } from './dto';
 
 @ApiTags('Speech-to-Text')
 @Controller('speech-to-text')
