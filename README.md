@@ -2,31 +2,53 @@
 
 This repository contains the backend for the Eleni Shepherd project — a NestJS-based monorepo with an application under `apps/app` and shared code in `libs/common`.
 
-**What this repo contains**
+## ⚡ Quick Links for Developers
+
+- **Interactive API Docs** 📚: `http://localhost:3000/api/docs` (Swagger UI)
+- **API Guide** 📖: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) — Complete guide for frontend devs
+- **Swagger Guide** 🎨: [SWAGGER_GUIDE.md](./SWAGGER_GUIDE.md) — How to use/update Swagger docs
+- **System Workflow** 🔄: [WORKFLOW.md](./WORKFLOW.md) — End-to-end system flows
+
+## What This Repo Contains
+
 - **NestJS app:** The main application lives in `apps/app` and implements API controllers, services, and the authentication flow.
 - **Auth (Google OAuth):** Google OAuth strategy and related controllers/services are in `apps/app/src/auth` (see `AUTH_SETUP.md` for setup details).
 - **Shared libraries:** `libs/common` contains shared modules, services, database abstractions, DTOs, filters and utilities used across the app.
 
-**Quick start**
+## Quick Start
+
 1. Install dependencies:
 ```bash
 npm install
 ```
-2. Create a `.env` file in the project root (see **Environment** below or `AUTH_SETUP.md`).
+
+2. Create a `.env` file in the project root (see **Environment** below or `AUTH_SETUP.md`):
+```bash
+cp .env.example .env  # if available
+```
+
 3. Run the dev server:
 ```bash
 npm run start:dev
 ```
-4. Build:
+
+4. Access Swagger docs:
+```
+http://localhost:3000/api/docs
+```
+
+5. Build:
 ```bash
 npm run build
 ```
-5. Run tests:
+
+6. Run tests:
 ```bash
 npm test
 ```
 
-**Environment variables**
+## Environment Variables
+
 Create a `.env` file with at least the following values (refer to `AUTH_SETUP.md` for full guidance):
 
 ```
@@ -35,11 +57,12 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
 SESSION_SECRET=your-session-secret-key-here
 MONGODB_URI=mongodb://localhost:27017/eleni-shepherd
+REDIS_URL=redis://localhost:6379
 NODE_ENV=development
 APP_PORT=3000
 ```
 
-**Project structure (high-level)**
+## Project Structure (High-Level)
 
 - apps/
   - app/

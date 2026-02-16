@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { SpeechToTextService } from '../speech-to-text/speech-to-text.service';
 import { TextToSpeechService } from '../text-to-speech/text-to-speech.service';
 import { AudioBuffer } from './interfaces/audio-buffer.interface';
+import { IAppResponse } from '@app/common/interfaces/response.interface';
+import { createAppResponse } from '@app/common/utils/response';
 
 @Injectable()
 export class AudioProcessingService {
@@ -29,7 +31,7 @@ export class AudioProcessingService {
     sessionId: string,
     audioChunk: Buffer,
     sampleRate: number,
-  ): Promise<{ transcript?: string; isFinal: boolean }> {
+  ): Promise<IAppResponse> {
     try {
       let buffer = this.audioBuffers.get(sessionId);
 
@@ -62,33 +64,32 @@ export class AudioProcessingService {
         // Quick wake-word check for always-listen mode
         if (settings.alwaysListen && !settings.awake && buffer.totalBytes >= this.MIN_AUDIO_LENGTH_BYTES / 4) {
           try {
-            const candidate = Buffer.concat(buffer.chunks.map((c) => Buffer.from(c)) as unknown as Uint8Array[]);
-            const wakeDetected = await this.sttService.detectWakeWord(candidate);
+                const candidate = Buffer.concat(buffer.chunks.map((c) => Buffer.from(c)) as unknown as Uint8Array[]);
+                const wakeResp = await this.sttService.detectWakeWord(candidate);
+                const wakeDetected = wakeResp && wakeResp.success ? (wakeResp.data as { voiceDetected: boolean }).voiceDetected : false;
 
-            if (wakeDetected) {
-              settings.awake = true;
-              this.sessionSettings.set(sessionId, settings);
-              this.logger.log(`Wake word detected for session ${sessionId}`);
-              
-              // Transcribe and return immediately with the wake word
-              const transcript = await this.sttService.transcribeAudio(candidate);
-              
-              // Clear buffer for next utterance
-              this.audioBuffers.delete(sessionId);
-              
-              return {
-                transcript,
-                isFinal: true,
-              };
-            }
+                if (wakeDetected) {
+                  settings.awake = true;
+                  this.sessionSettings.set(sessionId, settings);
+                  this.logger.log(`Wake word detected for session ${sessionId}`);
+
+                  // Transcribe and return immediately with the wake word
+                  const transResp = await this.sttService.transcribeAudio(candidate);
+                  const transcript = transResp && transResp.success ? (transResp.data as { text: string }).text : null;
+
+                  // Clear buffer for next utterance
+                  this.audioBuffers.delete(sessionId);
+
+                  return createAppResponse(true, 'Wake word transcribed', { transcript, isFinal: true }, 200);
+                }
           } catch (err) {
             this.logger.warn(`Wake-word check failed: ${err.message}`);
           }
         }
 
-        if (tapActive) return { isFinal: false };
+            if (tapActive) return createAppResponse(true, 'Tap active', { isFinal: false }, 200);
 
-        return { isFinal: false };
+            return createAppResponse(true, 'Chunk added', { isFinal: false }, 200);
       } else {
         const silenceDuration = Date.now() - buffer.lastChunkTime.getTime();
 
@@ -106,27 +107,25 @@ export class AudioProcessingService {
 
           if (currentSettings.alwaysListen && !currentSettings.awake && !tapActive) {
             this.logger.debug(`Ignoring non-wake audio for session ${sessionId} (always-listen waiting)`);
-            return { isFinal: false };
+            return createAppResponse(true, 'Ignored non-wake audio', { isFinal: false }, 200);
           }
 
-          const transcript = await this.sttService.transcribeAudio(completeAudio);
+          const transResp = await this.sttService.transcribeAudio(completeAudio);
+          const transcript = transResp && transResp.success ? (transResp.data as { text: string }).text : null;
 
           if (currentSettings.awake) {
             currentSettings.awake = false;
             this.sessionSettings.set(sessionId, currentSettings);
           }
 
-          return {
-            transcript,
-            isFinal: true,
-          };
+          return createAppResponse(true, 'Audio processed', { transcript, isFinal: true }, 200);
         }
 
-        return { isFinal: false };
+        return createAppResponse(true, 'No final audio yet', { isFinal: false }, 200);
       }
     } catch (error) {
       this.logger.error(`Error processing audio chunk: ${error.message}`);
-      throw error;
+      return createAppResponse(false, 'Error processing audio chunk', null, 500);
     }
   }
 
@@ -178,23 +177,24 @@ export class AudioProcessingService {
   async processCompleteAudio(
     audioBuffer: Buffer,
     sampleRate: number = 16000,
-  ): Promise<string> {
+  ): Promise<IAppResponse> {
     try {
-      const transcript = await this.sttService.transcribeAudio(audioBuffer);
-      return transcript;
+      const resp = await this.sttService.transcribeAudio(audioBuffer);
+      if (!resp.success) return resp;
+      return createAppResponse(true, 'Complete audio processed', resp.data, 200);
     } catch (error) {
       this.logger.error(`Error processing complete audio: ${error.message}`);
-      throw error;
+      return createAppResponse(false, 'Error processing complete audio', null, 500);
     }
   }
 
-  async generateCompleteAudio(text: string): Promise<Buffer> {
+  async generateCompleteAudio(text: string): Promise<IAppResponse> {
     try {
-      const audio = await this.ttsService.generateSpeech(text);
-      return audio;
+      const resp = await this.ttsService.generateSpeech(text);
+      return resp;
     } catch (error) {
       this.logger.error(`Error generating complete audio: ${error.message}`);
-      throw error;
+      return createAppResponse(false, 'Error generating audio', null, 500);
     }
   }
 }

@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { Message } from './dto';
+import { IAppResponse } from '@app/common/interfaces/response.interface';
+import { createAppResponse } from '@app/common/utils/response';
 
 @Injectable()
 export class LlmService {
@@ -28,20 +30,23 @@ export class LlmService {
     }
   }
 
-  async generateResponse(messages: Message[], context?: string): Promise<string> {
+  async generateResponse(messages: Message[], context?: string): Promise<IAppResponse> {
     try {
       const systemPrompt = this.buildSystemPrompt(context);
 
       if (this.provider === 'openai' && this.openai) {
-        return await this.generateOpenAIResponse(messages, systemPrompt);
+        const text = await this.generateOpenAIResponse(messages, systemPrompt);
+        return createAppResponse(true, 'Response generated', { response: text, provider: 'openai' }, 200);
       } else if (this.provider === 'anthropic' && this.anthropic) {
-        return await this.generateAnthropicResponse(messages, systemPrompt);
+        const text = await this.generateAnthropicResponse(messages, systemPrompt);
+        return createAppResponse(true, 'Response generated', { response: text, provider: 'anthropic' }, 200);
       } else {
-        return this.generateMockResponse(messages);
+        const txt = this.generateMockResponse(messages);
+        return createAppResponse(true, 'Mock response', { response: txt, provider: 'mock' }, 200);
       }
     } catch (error) {
       this.logger.error(`Error generating response: ${error.message}`);
-      throw error;
+      return createAppResponse(false, 'LLM error', null, 500);
     }
   }
 
@@ -144,7 +149,7 @@ export class LlmService {
     } else {
       // Fallback to non-streaming
       const response = await this.generateResponse(messages, context);
-      yield response;
+      yield response.data?.response || 'I apologize, but I could not generate a response.';
     }
   }
 }

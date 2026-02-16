@@ -39,3 +39,6 @@ node_modules
 # Ignore generated codebase docs; keep README.md in the repo
 CODEBASE_ORGANIZATION.md
 CODEBASE_QUICK_REFERENCE.md
+SWAGGER_GUIDE.md
+API_DOCUMENTATION.md
+WORKFLOW.md
