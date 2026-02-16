@@ -4,7 +4,8 @@
  */
 export class AudioProcessingEntity {
   id: string;
-  userId?: string;
+  // reference to User._id
+  userId?: import('mongoose').Types.ObjectId | string;
   sourceAudioPath: string;
   processedAudioBuffer: Buffer;
   format: string;

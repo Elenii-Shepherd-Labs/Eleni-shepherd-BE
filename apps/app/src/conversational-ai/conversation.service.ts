@@ -1,16 +1,59 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 import { LlmService } from '../llm/llm.service';
 import { Message } from '../llm/dto';
 import { ConversationSession } from './interfaces/conversation-session.interface';
+import { Types } from 'mongoose';
+import { IAppResponse } from '@app/common/interfaces/response.interface';
+import { createAppResponse } from '@app/common/utils/response';
 
 @Injectable()
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
-  private sessions: Map<string, ConversationSession> = new Map();
 
-  constructor(private readonly llmService: LlmService) {}
+  constructor(
+    private readonly llmService: LlmService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
 
-  async initializeSession(sessionId: string, userId?: string): Promise<ConversationSession> {
+  private sessionKey(sessionId: string) {
+    return `conversation:session:${sessionId}`;
+  }
+
+  private activeSessionsKey() {
+    return `conversation:active_sessions`;
+  }
+
+  private async addActiveSessionId(sessionId: string) {
+    const key = this.activeSessionsKey();
+    const list: string[] = (await this.cacheManager.get(key)) || [];
+    if (!list.includes(sessionId)) {
+      list.push(sessionId);
+      await this.cacheManager.set(key, list);
+    }
+  }
+
+  private async removeActiveSessionId(sessionId: string) {
+    const key = this.activeSessionsKey();
+    const list: string[] = (await this.cacheManager.get(key)) || [];
+    const idx = list.indexOf(sessionId);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      await this.cacheManager.set(key, list);
+    }
+  }
+
+  private reviveSession(session: any): ConversationSession {
+    if (!session) return session;
+    return {
+      ...session,
+      createdAt: session.createdAt ? new Date(session.createdAt) : new Date(),
+      lastActivityAt: session.lastActivityAt ? new Date(session.lastActivityAt) : new Date(),
+    } as ConversationSession;
+  }
+
+  async initializeSession(sessionId: string, userId?: Types.ObjectId | string): Promise<IAppResponse> {
     const session: ConversationSession = {
       sessionId,
       userId,
@@ -21,35 +64,40 @@ export class ConversationService {
       interrupted: false,
     };
 
-    this.sessions.set(sessionId, session);
+    await this.cacheManager.set(this.sessionKey(sessionId), session);
+    await this.addActiveSessionId(sessionId);
     this.logger.log(`Session initialized: ${sessionId}${userId ? ` for user ${userId}` : ''}`);
-    
-    return session;
+
+    return createAppResponse(true, 'Session created', session, 201);
   }
 
-  async getSession(sessionId: string): Promise<ConversationSession | undefined> {
-    return this.sessions.get(sessionId);
-  }
-
-  async addContext(sessionId: string, context: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
-    
+  async getSession(sessionId: string): Promise<IAppResponse> {
+    const raw = await this.cacheManager.get(this.sessionKey(sessionId));
+    const session = this.reviveSession(raw);
     if (!session) {
-      throw new Error(`Session not found: ${sessionId}`);
+      return createAppResponse(false, 'Session not found', null, 404);
     }
+    return createAppResponse(true, 'Session retrieved', session, 200);
+  }
 
+  async addContext(sessionId: string, context: string): Promise<IAppResponse> {
+    const rawResp = await this.getSession(sessionId) as IAppResponse;
+    if (!rawResp.success) return rawResp;
+
+    const session = rawResp.data as ConversationSession;
     session.context = context;
     session.lastActivityAt = new Date();
-    
+    await this.cacheManager.set(this.sessionKey(sessionId), session);
+
     this.logger.log(`Context added to session ${sessionId}: ${context.substring(0, 100)}...`);
+    return createAppResponse(true, 'Context added', session, 200);
   }
 
-  async processMessage(sessionId: string, userMessage: string): Promise<string> {
-    const session = this.sessions.get(sessionId);
-    
-    if (!session) {
-      throw new Error(`Session not found: ${sessionId}`);
-    }
+  async processMessage(sessionId: string, userMessage: string): Promise<IAppResponse> {
+    const rawResp = await this.getSession(sessionId) as IAppResponse;
+    if (!rawResp.success) return rawResp;
+
+    const session = rawResp.data as ConversationSession;
 
     // Add user message
     const userMsg: Message = {
@@ -64,7 +112,7 @@ export class ConversationService {
     this.logger.log(`Processing message for session ${sessionId}: ${userMessage}`);
 
     // Get AI response
-    const aiResponse = await this.llmService.generateResponse(
+    const aiResponseResp = await this.llmService.generateResponse(
       session.messages,
       session.context,
     );
@@ -72,7 +120,7 @@ export class ConversationService {
     // Add AI response
     const assistantMsg: Message = {
       role: 'assistant',
-      content: aiResponse,
+      content: aiResponseResp.data as string,
     };
     session.messages.push(assistantMsg);
 
@@ -81,50 +129,62 @@ export class ConversationService {
       session.messages = session.messages.slice(-20);
     }
 
-    return aiResponse;
+    await this.cacheManager.set(this.sessionKey(sessionId), session);
+
+    return createAppResponse(true, 'Message processed', { response: aiResponseResp.data, sessionId }, 200);
   }
 
-  async setInterrupted(sessionId: string, interrupted: boolean): Promise<void> {
-    const session = this.sessions.get(sessionId);
-    
-    if (session) {
-      session.interrupted = interrupted;
-    }
+  async setInterrupted(sessionId: string, interrupted: boolean): Promise<IAppResponse> {
+    const rawResp = await this.getSession(sessionId) as IAppResponse;
+    if (!rawResp.success) return rawResp;
+
+    const session = rawResp.data as ConversationSession;
+    session.interrupted = interrupted;
+    await this.cacheManager.set(this.sessionKey(sessionId), session);
+    return createAppResponse(true, 'Session interrupted flag updated', session, 200);
   }
 
-  async endSession(sessionId: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
-    
-    if (session) {
-      this.logger.log(
-        `Ending session ${sessionId}. Total messages: ${session.messages.length}`,
-      );
-      this.sessions.delete(sessionId);
-    }
+  async endSession(sessionId: string): Promise<IAppResponse> {
+    const rawResp = await this.getSession(sessionId) as IAppResponse;
+    if (!rawResp.success) return rawResp;
+
+    const session = rawResp.data as ConversationSession;
+    this.logger.log(`Ending session ${sessionId}. Total messages: ${session.messages.length}`);
+    await this.cacheManager.del(this.sessionKey(sessionId));
+    await this.removeActiveSessionId(sessionId);
+    return createAppResponse(true, 'Session ended', null, 200);
   }
 
-  async clearHistory(sessionId: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
-    
-    if (session) {
-      session.messages = [];
-      session.lastActivityAt = new Date();
-      this.logger.log(`Cleared history for session ${sessionId}`);
-    }
+  async clearHistory(sessionId: string): Promise<IAppResponse> {
+    const rawResp = await this.getSession(sessionId) as IAppResponse;
+    if (!rawResp.success) return rawResp;
+
+    const session = rawResp.data as ConversationSession;
+    session.messages = [];
+    session.lastActivityAt = new Date();
+    await this.cacheManager.set(this.sessionKey(sessionId), session);
+    this.logger.log(`Cleared history for session ${sessionId}`);
+    return createAppResponse(true, 'History cleared', session, 200);
   }
 
   /**
    * Get all active sessions (for admin/monitoring)
    */
-  async getActiveSessions(): Promise<ConversationSession[]> {
-    return Array.from(this.sessions.values());
+  async getActiveSessions(): Promise<IAppResponse> {
+    const ids: string[] = (await this.cacheManager.get(this.activeSessionsKey())) || [];
+    const sessionResponses = await Promise.all(ids.map(id => this.getSession(id)));
+    const sessions = sessionResponses.map(r => (r as IAppResponse).data).filter(Boolean) as ConversationSession[];
+    return createAppResponse(true, 'Active sessions retrieved', sessions, 200);
   }
 
   /**
    * Get sessions by user ID
    */
-  async getUserSessions(userId: string): Promise<ConversationSession[]> {
-    return Array.from(this.sessions.values())
-      .filter(session => session.userId === userId);
+  async getUserSessions(userId: Types.ObjectId | string): Promise<IAppResponse> {
+    const allResp = await this.getActiveSessions() as IAppResponse;
+    if (!allResp.success) return allResp;
+    const all = allResp.data as ConversationSession[];
+    const filtered = all.filter(session => String(session.userId) === String(userId));
+    return createAppResponse(true, 'User sessions retrieved', filtered, 200);
   }
 }

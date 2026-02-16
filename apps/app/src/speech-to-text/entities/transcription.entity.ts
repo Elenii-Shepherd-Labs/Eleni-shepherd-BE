@@ -2,9 +2,12 @@
  * Speech-to-Text Transcription Entity
  * Represents an audio file and its transcription
  */
+import { Types } from 'mongoose';
+
 export class TranscriptionEntity {
   id: string;
-  userId?: string;
+  // reference to User._id
+  userId?: Types.ObjectId | string;
   audioFilePath: string;
   audioFileName: string;
   text: string;

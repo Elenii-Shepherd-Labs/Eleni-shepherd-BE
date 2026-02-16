@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { IAppResponse } from '@app/common/interfaces/response.interface';
+import { createAppResponse } from '@app/common/utils/response';
 
 @Injectable()
 export class SpeechToTextService {
@@ -18,46 +20,44 @@ export class SpeechToTextService {
     }
   }
 
-  async transcribeAudio(audioBuffer: Buffer, language?: string): Promise<string> {
+  async transcribeAudio(audioBuffer: Buffer, language?: string): Promise<IAppResponse> {
     try {
+      let text: string;
       if (!this.openai) {
-        return this.mockTranscription(audioBuffer);
+        text = this.mockTranscription(audioBuffer);
+      } else {
+        const file = new File([new Uint8Array(audioBuffer)], 'audio.wav', {
+          type: 'audio/wav',
+        });
+
+        const transcription = await this.openai.audio.transcriptions.create({
+          file: file,
+          model: 'whisper-1',
+          language: language || 'en',
+          response_format: 'text',
+        });
+
+        text = transcription;
       }
 
-      const file = new File([new Uint8Array(audioBuffer)], 'audio.wav', {
-        type: 'audio/wav',
-      });
-
-      const transcription = await this.openai.audio.transcriptions.create({
-        file: file,
-        model: 'whisper-1',
-        language: language || 'en',
-        response_format: 'text',
-      });
-
-      this.logger.log(`Transcribed: ${transcription.substring(0, 100)}...`);
-      
-      return transcription;
+      this.logger.log(`Transcribed: ${String(text).substring(0, 100)}...`);
+      return createAppResponse(true, 'Transcription complete', { text, isFinal: true }, 200);
     } catch (error) {
       this.logger.error(`Transcription error: ${error.message}`);
-      throw error;
+      return createAppResponse(false, 'Transcription error', null, 500);
     }
   }
 
   async transcribeAudioStream(
     audioBuffer: Buffer,
     language?: string,
-  ): Promise<{ text: string; isFinal: boolean }> {
+  ): Promise<IAppResponse> {
     try {
-      const text = await this.transcribeAudio(audioBuffer, language);
-      
-      return {
-        text,
-        isFinal: true,
-      };
+      const resp = await this.transcribeAudio(audioBuffer, language);
+      return resp;
     } catch (error) {
       this.logger.error(`Stream transcription error: ${error.message}`);
-      throw error;
+      return createAppResponse(false, 'Stream transcription error', null, 500);
     }
   }
 
@@ -67,28 +67,29 @@ export class SpeechToTextService {
    * This handles transcription errors like "Heal any", "hey liony", etc.
    * For production, replace with a proper keyword-spotting model.
    */
-  async detectWakeWord(audioBuffer: Buffer): Promise<boolean> {
+  async detectWakeWord(audioBuffer: Buffer): Promise<IAppResponse> {
     try {
-      const text = await this.transcribeAudio(audioBuffer, 'en');
-      if (!text) return false;
+      const resp = await this.transcribeAudio(audioBuffer, 'en');
+      if (!resp.success) return createAppResponse(false, 'Wake-word transcription failed', null, 500);
+
+      const text = (resp.data as { text: string }).text;
+      if (!text) return createAppResponse(true, 'No wake word', { voiceDetected: false }, 200);
 
       const normalized = text.toLowerCase().trim();
-      
       // Simple heuristic: if transcription contains 2+ words, treat as wake word
-      // This handles: "hey eleni", "heal any", "hey liony", etc.
       const wordCount = normalized.split(/\s+/).length;
       const detected = wordCount >= 2;
-      
+
       if (detected) {
         this.logger.log(`Wake word detected (${wordCount} words): "${text}"`);
       } else {
         this.logger.debug(`Wake word not detected (${wordCount} word(s)): "${text}"`);
       }
-      
-      return detected;
+
+      return createAppResponse(true, 'Wake-word detection complete', { voiceDetected: detected }, 200);
     } catch (err) {
       this.logger.warn(`Wake-word detection failed: ${err.message}`);
-      return false;
+      return createAppResponse(false, 'Wake-word detection failed', null, 500);
     }
   }
 

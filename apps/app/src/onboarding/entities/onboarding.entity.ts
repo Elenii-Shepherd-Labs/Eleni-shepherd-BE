@@ -4,7 +4,8 @@
  */
 export class OnboardingEntity {
   id: string;
-  userId: string;
+  // reference to User._id
+  userId: import('mongoose').Types.ObjectId | string;
   firstname?: string;
   lastname?: string;
   audioFile?: string;

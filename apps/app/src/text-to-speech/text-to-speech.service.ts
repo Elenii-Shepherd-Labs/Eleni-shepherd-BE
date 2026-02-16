@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import axios from 'axios';
+import { IAppResponse } from '@app/common/interfaces/response.interface';
+import { createAppResponse } from '@app/common/utils/response';
 
 @Injectable()
 export class TextToSpeechService {
@@ -24,18 +26,20 @@ export class TextToSpeechService {
     }
   }
 
-  async generateSpeech(text: string, voice?: string): Promise<Buffer> {
+  async generateSpeech(text: string, voice?: string): Promise<IAppResponse> {
     try {
+      let buffer: Buffer;
       if (this.elevenLabsApiKey) {
-        return await this.generateElevenLabsSpeech(text, voice);
+        buffer = await this.generateElevenLabsSpeech(text, voice);
       } else if (this.openai) {
-        return await this.generateOpenAISpeech(text, voice);
+        buffer = await this.generateOpenAISpeech(text, voice);
       } else {
-        return this.generateMockAudio(text);
+        buffer = this.generateMockAudio(text);
       }
+      return createAppResponse(true, 'Audio generated', buffer, 200);
     } catch (error) {
       this.logger.error(`TTS error: ${error.message}`);
-      throw error;
+      return createAppResponse(false, 'TTS error', null, 500);
     }
   }
 

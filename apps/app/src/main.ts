@@ -43,12 +43,85 @@ async function bootstrap() {
   // Swagger configuration
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Eleni Shepherd API')
-    .setDescription('Google Authentication API')
-    .setVersion('1.0')
-    .addTag('auth')
+    .setDescription(
+      `
+# Eleni Shepherd Backend API
+
+A comprehensive AI-powered audio processing and conversational AI system with speech-to-text, text-to-speech, and LLM integration.
+
+## Key Features
+- **Audio Processing**: Real-time audio transcription with wake-word detection
+- **Text-to-Speech**: Convert text to natural speech with multiple voice options
+- **Conversational AI**: Multi-turn conversations with context awareness
+- **LLM Integration**: Support for OpenAI and Anthropic models
+- **Session Management**: Redis-backed session persistence for horizontal scaling
+- **Google Authentication**: Secure user authentication via Google OAuth 2.0
+
+## Base URL
+\`\`\`
+http://localhost:3000
+\`\`\`
+
+## Authentication
+All endpoints except \`/auth/google*\` require authentication via Google OAuth 2.0.
+Session cookies are automatically managed after successful Google login.
+
+## Response Format
+All API responses follow a standardized format:
+\`\`\`json
+{
+  "success": boolean,
+  "message": string,
+  "data": any,
+  "status": number
+}
+\`\`\`
+
+## Error Handling
+- **400 Bad Request**: Invalid input or missing required parameters
+- **401 Unauthorized**: Missing or invalid authentication
+- **404 Not Found**: Resource not found
+- **500 Internal Server Error**: Server-side errors
+
+## Rate Limiting
+No rate limiting currently implemented. Contact API team for production considerations.
+
+## WebSocket Support
+Conversational AI supports WebSocket connections for real-time messaging (via Gateway).
+`,
+    )
+    .setVersion('1.0.0')
+    .setContact(
+      'Eleni Shepherd Team',
+      'https://github.com/eleni-shepherd',
+      'support@eleni-shepherd.com',
+    )
+    .setLicense(
+      'MIT',
+      'https://opensource.org/licenses/MIT',
+    )
+    .addTag('auth', 'User authentication and profile management')
+    .addTag('Audio Processing', 'Real-time audio chunk processing with transcription')
+    .addTag('Speech-to-Text', 'Audio transcription and voice activity detection')
+    .addTag('Text-to-Speech', 'Text to speech synthesis with voice selection')
+    .addTag('LLM', 'Large Language Model integration for AI responses')
+    .addTag('Conversational AI', 'Multi-turn conversation sessions with context')
+    .addTag('Onboarding', 'User onboarding and profile setup')
+    .addCookieAuth('sessionId')
+    .addServer('http://localhost:3000', 'Local Development')
+    .addServer('https://api.example.com', 'Production')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: {
+      persistAuthorizationData: true,
+      tagsSorter: 'alpha',
+      operationsSorter: 'method',
+      docExpansion: 'list',
+      filter: true,
+      presets: [],
+    },
+  });
 
   const port = config.get('app.port') || 3000;
   await app.listen(port);

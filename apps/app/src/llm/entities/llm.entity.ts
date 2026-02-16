@@ -21,7 +21,8 @@ export class LlmMessageEntity {
  */
 export class LlmSessionEntity {
   id: string;
-  userId?: string;
+  // reference to User._id
+  userId?: import('mongoose').Types.ObjectId | string;
   messages: LlmMessageEntity[];
   model: string;
   createdAt: Date;
