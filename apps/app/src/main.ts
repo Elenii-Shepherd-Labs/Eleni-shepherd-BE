@@ -82,12 +82,6 @@ All API responses follow a standardized format:
 - **401 Unauthorized**: Missing or invalid authentication
 - **404 Not Found**: Resource not found
 - **500 Internal Server Error**: Server-side errors
-
-## Rate Limiting
-No rate limiting currently implemented. Contact API team for production considerations.
-
-## WebSocket Support
-Conversational AI supports WebSocket connections for real-time messaging (via Gateway).
 `,
     )
     .setVersion('1.0.0')
@@ -96,10 +90,10 @@ Conversational AI supports WebSocket connections for real-time messaging (via Ga
     //   'https://github.com/eleni-shepherd',
     //   'support@eleni-shepherd.com',
     // )
-    .setLicense(
-      'MIT',
-      'https://opensource.org/licenses/MIT',
-    )
+    // .setLicense(
+    //   'MIT',
+    //   'https://opensource.org/licenses/MIT',
+    // )
     .addTag('auth', 'User authentication and profile management')
     .addTag('Audio Processing', 'Real-time audio chunk processing with transcription')
     .addTag('Speech-to-Text', 'Audio transcription and voice activity detection')
@@ -114,7 +108,7 @@ Conversational AI supports WebSocket connections for real-time messaging (via Ga
     .addTag('Subscription & Languages', 'Subscription tiers and allowed languages (free: English, subscribed: all)')
     .addCookieAuth('sessionId')
     .addServer('http://localhost:3000', 'Local Development')
-    .addServer('https://api.example.com', 'Production')
+    // .addServer('https://api.example.com', 'Production')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   // Mount Swagger UI at /api with minimal options to avoid swagger-ui incompatibilities
