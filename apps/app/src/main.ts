@@ -17,7 +17,6 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  // Configure session middleware
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'your-secret-key',
@@ -27,11 +26,9 @@ async function bootstrap() {
     }),
   );
 
-  // Initialize Passport with session support
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Passport serialization
   passport.serializeUser((user: any, done) => {
     done(null, user);
   });
@@ -47,15 +44,18 @@ async function bootstrap() {
       `
 # Eleni Shepherd Backend API
 
-A comprehensive AI-powered audio processing and conversational AI system with speech-to-text, text-to-speech, and LLM integration.
+AI-powered assistant for people with visual impairments. Speech-to-text, text-to-speech, conversational AI, radio, news, screen reader, and vision object detection.
 
 ## Key Features
 - **Audio Processing**: Real-time audio transcription with wake-word detection
 - **Text-to-Speech**: Convert text to natural speech with multiple voice options
 - **Conversational AI**: Multi-turn conversations with context awareness
 - **LLM Integration**: Support for OpenAI and Anthropic models
-- **Session Management**: Redis-backed session persistence for horizontal scaling
-- **Google Authentication**: Secure user authentication via Google OAuth 2.0
+- **Radio Stations**: Live Nigerian radio via Radio Browser API
+- **Blog & News**: Recent news, entertainment, sports (GNews / Hacker News)
+- **Accessibility**: Screen reader / read-aloud for content
+- **Vision**: YOLO object detection; ESP32-CAM image processing
+- **Language Tiers**: Free = English only; Subscribed = Hausa, Yoruba, Igbo, Swahili, German, etc.
 
 ## Base URL
 \`\`\`
@@ -91,11 +91,11 @@ Conversational AI supports WebSocket connections for real-time messaging (via Ga
 `,
     )
     .setVersion('1.0.0')
-    .setContact(
-      'Eleni Shepherd Team',
-      'https://github.com/eleni-shepherd',
-      'support@eleni-shepherd.com',
-    )
+    // .setContact(
+    //   'Eleni Shepherd Team',
+    //   'https://github.com/eleni-shepherd',
+    //   'support@eleni-shepherd.com',
+    // )
     .setLicense(
       'MIT',
       'https://opensource.org/licenses/MIT',
@@ -107,19 +107,23 @@ Conversational AI supports WebSocket connections for real-time messaging (via Ga
     .addTag('LLM', 'Large Language Model integration for AI responses')
     .addTag('Conversational AI', 'Multi-turn conversation sessions with context')
     .addTag('Onboarding', 'User onboarding and profile setup')
+    .addTag('Radio Stations', 'Live radio stations from Radio Browser API (Nigeria)')
+    .addTag('Blog & News', 'Recent news, entertainment, sports, and blog articles')
+    .addTag('Accessibility (Screen Reader)', 'Read-aloud TTS for visually impaired users')
+    .addTag('Vision (Object Detection)', 'YOLO object detection and ESP32-CAM image processing')
+    .addTag('Subscription & Languages', 'Subscription tiers and allowed languages (free: English, subscribed: all)')
     .addCookieAuth('sessionId')
     .addServer('http://localhost:3000', 'Local Development')
     .addServer('https://api.example.com', 'Production')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document, {
+  // Mount Swagger UI at /api with minimal options to avoid swagger-ui incompatibilities
+  SwaggerModule.setup('/api', app, document, {
     swaggerOptions: {
-      persistAuthorizationData: true,
       tagsSorter: 'alpha',
       operationsSorter: 'method',
       docExpansion: 'list',
       filter: true,
-      presets: [],
     },
   });
 

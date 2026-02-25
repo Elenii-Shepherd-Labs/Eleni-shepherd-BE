@@ -1,6 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+/** Subscription tiers: free = English only, subscribed = all languages */
+export type SubscriptionTier = 'free' | 'subscribed';
+
 @Schema({ _id: false })
 export class FullName {
   @Prop()
@@ -9,7 +12,8 @@ export class FullName {
   @Prop()
   lastname?: string;
 }
-@Schema()
+
+@Schema({ timestamps: true })
 export class User extends Document {
   @Prop({ required: true })
   username: string;
@@ -22,6 +26,10 @@ export class User extends Document {
 
   @Prop({ required: true })
   googleId: string;
+
+  /** free = English only; subscribed = English, Hausa, Yoruba, Igbo, Swahili, German, etc. */
+  @Prop({ type: String, enum: ['free', 'subscribed'], default: 'free' })
+  subscriptionTier: SubscriptionTier;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

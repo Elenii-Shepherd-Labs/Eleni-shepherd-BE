@@ -13,6 +13,11 @@ import { TextToSpeechModule } from './text-to-speech/text-to-speech.module';
 import { LlmModule } from './llm/llm.module';
 import { AudioProcessingModule } from './audio-processing/audio-processing.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { RadioStationsModule } from './radio-stations/radio-stations.module';
+import { BlogModule } from './blog/blog.module';
+import { AccessibilityModule } from './accessibility/accessibility.module';
+import { VisionModule } from './vision/vision.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -30,12 +35,17 @@ import { OnboardingModule } from './onboarding/onboarding.module';
     }),
     DatabaseModule,
     AuthModule,
+    SubscriptionModule,
     ConversationalAiModule,
     SpeechToTextModule,
     TextToSpeechModule,
     LlmModule,
     AudioProcessingModule,
     OnboardingModule,
+    RadioStationsModule,
+    BlogModule,
+    AccessibilityModule,
+    VisionModule,
   ],
   controllers: [AppController],
   providers: [AppService],

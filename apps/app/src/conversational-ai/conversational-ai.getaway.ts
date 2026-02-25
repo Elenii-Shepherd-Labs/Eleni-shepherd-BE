@@ -86,14 +86,15 @@ export class ConversationalAiGateway
         data.sampleRate || 16000,
       );
 
-      if (result.transcript) {
+      const resultData = result.data as { transcript?: string; isFinal?: boolean } | null;
+      if (resultData?.transcript) {
         client.emit('transcript', {
-          text: result.transcript,
-          isFinal: result.isFinal,
+          text: resultData.transcript,
+          isFinal: resultData.isFinal ?? false,
         });
 
-        if (result.isFinal) {
-          await this.handleUserMessage(client, result.transcript);
+        if (resultData.isFinal) {
+          await this.handleUserMessage(client, resultData.transcript!);
         }
       }
     } catch (error) {
@@ -156,13 +157,14 @@ export class ConversationalAiGateway
         message,
       );
 
+      const responseText = (response.data as { response?: string })?.response ?? '';
       client.emit('ai-response', {
-        text: response,
+        text: responseText,
       });
 
       client.emit('processing', { status: 'generating-audio' });
       
-      await this.streamAudioResponse(client, response);
+      await this.streamAudioResponse(client, responseText);
       
       client.emit('response-complete', {
         message: 'Response complete',
@@ -184,7 +186,8 @@ export class ConversationalAiGateway
       );
 
       for await (const audioChunk of audioStream) {
-        const session = await this.conversationService.getSession(client.id);
+        const sessionResp = await this.conversationService.getSession(client.id);
+        const session = sessionResp?.data as { interrupted?: boolean } | null;
         if (session?.interrupted) {
           break;
         }

@@ -125,6 +125,7 @@ const handleGenerateSpeech = async (text: string, voice: string) => {
     const resp = await this.textToSpeechService.generateSpeech(
       generateSpeechDto.text,
       generateSpeechDto.voice,
+      generateSpeechDto.speed,
     );
 
     if (!resp.success) {
@@ -227,6 +228,7 @@ if (result.success) {
     const resp = await this.textToSpeechService.generateSpeech(
       generateSpeechDto.text,
       generateSpeechDto.voice,
+      generateSpeechDto.speed,
     );
 
     if (!resp.success) {
