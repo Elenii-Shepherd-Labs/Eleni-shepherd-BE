@@ -76,6 +76,9 @@ const getAppConfig = () => ({
 export const configuration = () => {
   return {
     app: getAppConfig(),
+    // allow an optional fallback DB URL (standard mongodb://) for environments
+    // where SRV resolution fails or is blocked
+    databaseFallback: process.env.DATABASE_URL_FALLBACK || undefined,
     cache: {
       ttl: parseInt(process.env.CACHE_TTL || '0', 10),
     },

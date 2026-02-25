@@ -17,7 +17,6 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  // Configure session middleware
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'your-secret-key',
@@ -27,11 +26,9 @@ async function bootstrap() {
     }),
   );
 
-  // Initialize Passport with session support
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Passport serialization
   passport.serializeUser((user: any, done) => {
     done(null, user);
   });
@@ -94,11 +91,11 @@ Conversational AI supports WebSocket connections for real-time messaging (via Ga
 `,
     )
     .setVersion('1.0.0')
-    .setContact(
-      'Eleni Shepherd Team',
-      'https://github.com/eleni-shepherd',
-      'support@eleni-shepherd.com',
-    )
+    // .setContact(
+    //   'Eleni Shepherd Team',
+    //   'https://github.com/eleni-shepherd',
+    //   'support@eleni-shepherd.com',
+    // )
     .setLicense(
       'MIT',
       'https://opensource.org/licenses/MIT',
@@ -120,14 +117,13 @@ Conversational AI supports WebSocket connections for real-time messaging (via Ga
     .addServer('https://api.example.com', 'Production')
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document, {
+  // Mount Swagger UI at /api with minimal options to avoid swagger-ui incompatibilities
+  SwaggerModule.setup('/api', app, document, {
     swaggerOptions: {
-      persistAuthorizationData: true,
       tagsSorter: 'alpha',
       operationsSorter: 'method',
       docExpansion: 'list',
       filter: true,
-      presets: [],
     },
   });
 

@@ -43,7 +43,7 @@ def get_obstacles_from_detections(detections):
             obstacles.append({
                 "label": d.get('label', 'object'),
                 "confidence": d.get('confidence', 0),
-                "bbox": d.get('bbox"),
+                "bbox": d.get('bbox'),
                 "hint": _obstacle_hint(d.get('label', 'object')),
             })
     return obstacles

@@ -19,6 +19,15 @@ export class GenerateSpeechDto {
   @IsOptional()
   @IsString()
   voice?: string;
+
+  @ApiProperty({
+    type: 'number',
+    description: 'Speech speed multiplier (0.5 = slower, 1 = normal, 1.2 = faster)',
+    required: false,
+    example: 0.9,
+  })
+  @IsOptional()
+  speed?: number;
 }
 
 export class SpeechResponseDto {

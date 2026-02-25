@@ -22,194 +22,67 @@ import { VisionService } from './vision.service';
 export class VisionController {
   constructor(private readonly visionService: VisionService) {}
 
+  private imageOrVideo(file: Express.Multer.File) {
+    return file && ( /^image\//i.test(file.mimetype) || /^video\//i.test(file.mimetype) );
+  }
+
   @Post('detect')
   @ApiOperation({
     summary: 'YOLO object detection on image',
-    description: `
-Sends an image to the Vision/YOLO microservice for object detection.
-Returns detected objects with labels and confidence scores.
-
-**Frontend Implementation**:
-\`\`\`typescript
-const formData = new FormData();
-formData.append('image', imageFile);
-
-const response = await fetch('http://localhost:3000/vision/detect', {
-  method: 'POST',
-  body: formData,
-  credentials: 'include',
-});
-const result = await response.json();
-// result.data.detections = [{ label: 'person', confidence: 0.95 }, ...]
-\`\`\`
-
-**Requires**: Python vision microservice running (VISION_SERVICE_URL, default localhost:5000)
-**Response**: Array of { label, confidence, bbox? }
-    `,
-  })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        image: { type: 'string', format: 'binary', description: 'Image file (JPEG/PNG)' },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Detections from YOLO',
-    schema: {
-      properties: {
-        success: { type: 'boolean' },
-        data: {
-          type: 'object',
-          properties: {
-            detections: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  label: { type: 'string' },
-                  confidence: { type: 'number' },
-                  bbox: { type: 'object' },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  })
-  @UseInterceptors(FileInterceptor('image'))
-  async detectFromFile(@UploadedFile() file: Express.Multer.File, @Res() res: any) {
-    if (!file?.buffer) {
-      throw new BadRequestException('image file is required');
-    }
-    const detections = await this.visionService.detectObjects(file.buffer);
-    return res.status(200).json({
-      success: true,
-      message: 'Object detection complete',
-      data: { detections },
-      status: 200,
-    });
-  }
-
-  @Post('detect/base64')
-  @ApiOperation({
-    summary: 'Object detection from base64 image (ESP32-CAM)',
-    description: `
-Receives base64-encoded image chunks (e.g. from ESP32-CAM) and runs YOLO detection.
-Use for hardware that sends images as base64.
-
-**ESP32-CAM Integration**:
-\`\`\`c
-// Send JPEG frame as base64 to this endpoint
-HTTP POST /vision/detect/base64
-Body: { "imageBase64": "<base64 string>" }
-\`\`\`
-
-**Frontend/Device**:
-\`\`\`typescript
-const response = await fetch('http://localhost:3000/vision/detect/base64', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ imageBase64: base64String }),
-});
-const result = await response.json();
-\`\`\`
-    `,
-  })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['imageBase64'],
-      properties: {
-        imageBase64: { type: 'string', description: 'Base64-encoded image' },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Detections',
-    schema: {
-      properties: {
-        success: { type: 'boolean' },
-        data: {
-          type: 'object',
-          properties: {
-            detections: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  label: { type: 'string' },
-                  confidence: { type: 'number' },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-  })
-  async detectFromBase64(
-    @Body() body: { imageBase64: string },
-    @Res() res: any,
-  ) {
-    if (!body?.imageBase64) {
-      throw new BadRequestException('imageBase64 is required');
-    }
-    const detections = await this.visionService.detectFromBase64(
-      body.imageBase64,
-    );
-    return res.status(200).json({
-      success: true,
-      message: 'Object detection complete',
-      data: { detections },
-      status: 200,
-    });
-  }
-
-  @Post('ocr')
-  @ApiOperation({
-    summary: 'OCR - extract text from image (papers, documents)',
-    description: `
-Extract text from images (papers, receipts, signs) for TTS reading aloud.
-Designed for visually impaired users - capture image, get text, speak it.
-
-**Frontend Implementation**:
-\`\`\`typescript
-const formData = new FormData();
-formData.append('image', imageFile);
-const res = await fetch('http://localhost:3000/vision/ocr', { method: 'POST', body: formData });
-const { data } = await res.json();
-// data.text = extracted text
-// Then call /accessibility/read-aloud with data.text
-\`\`\`
-
-**Requires**: Python vision microservice with pytesseract or easyocr
-    `,
+    description: `Sends an image to the Vision/YOLO microservice for object detection. Returns detected objects with labels and confidence scores.`,
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
+  @ApiResponse({ status: 200, description: 'Detections from YOLO' })
+  @UseInterceptors(
+    FileInterceptor('image', {
+      fileFilter: (req, file, cb) => {
+        const ok = /^image\//i.test(file.mimetype) || /^video\//i.test(file.mimetype);
+        if (ok) return cb(null, true);
+        return cb(new Error('Only image or video files are allowed'), false);
+      },
+    }),
+  )
+  async detectFromFile(@UploadedFile() file: Express.Multer.File, @Res() res: any) {
+    if (!file?.buffer) throw new BadRequestException('image file is required');
+    if (!this.imageOrVideo(file)) throw new BadRequestException('Only image or video files are allowed');
+    const detections = await this.visionService.detectObjects(file.buffer);
+    return res.status(200).json({ success: true, message: 'Object detection complete', data: { detections }, status: 200 });
+  }
+
+  @Post('detect/base64')
+  @ApiOperation({ summary: 'Object detection from base64 image' })
+  @ApiBody({ schema: { type: 'object', required: ['imageBase64'], properties: { imageBase64: { type: 'string' } } } })
+  @ApiResponse({ status: 200, description: 'Detections' })
+  async detectFromBase64(@Body() body: { imageBase64: string }, @Res() res: any) {
+    if (!body?.imageBase64) throw new BadRequestException('imageBase64 is required');
+    const detections = await this.visionService.detectFromBase64(body.imageBase64);
+    return res.status(200).json({ success: true, message: 'Object detection complete', data: { detections }, status: 200 });
+  }
+
+  @Post('ocr')
+  @ApiOperation({ summary: 'OCR - extract text from image (papers, documents)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
   @ApiResponse({ status: 200, description: 'Extracted text' })
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(
+    FileInterceptor('image', {
+      fileFilter: (req, file, cb) => {
+        const ok = /^image\//i.test(file.mimetype) || /^video\//i.test(file.mimetype);
+        if (ok) return cb(null, true);
+        return cb(new Error('Only image or video files are allowed'), false);
+      },
+    }),
+  )
   async ocr(@UploadedFile() file: Express.Multer.File, @Res() res: any) {
     if (!file?.buffer) throw new BadRequestException('image file required');
+    if (!this.imageOrVideo(file)) throw new BadRequestException('Only image or video files are allowed');
     const text = await this.visionService.extractText(file.buffer);
-    return res.status(200).json({
-      success: true,
-      message: 'OCR complete',
-      data: { text },
-      status: 200,
-    });
+    return res.status(200).json({ success: true, message: 'OCR complete', data: { text }, status: 200 });
   }
 
   @Post('ocr/base64')
-  @ApiOperation({
-    summary: 'OCR from base64 image (e.g. ESP32-CAM)',
-  })
+  @ApiOperation({ summary: 'OCR from base64 image' })
   @ApiBody({ schema: { type: 'object', required: ['imageBase64'], properties: { imageBase64: { type: 'string' } } } })
   async ocrBase64(@Body() body: { imageBase64: string }, @Res() res: any) {
     if (!body?.imageBase64) throw new BadRequestException('imageBase64 required');
@@ -219,25 +92,23 @@ const { data } = await res.json();
   }
 
   @Post('navigate')
-  @ApiOperation({
-    summary: 'Navigation - obstacle detection with spoken hints',
-    description: `
-Detect obstacles for navigation. Returns objects and TTS-ready hints
-(e.g. "Person ahead, proceed with caution", "Chair in path").
-    `,
-  })
+  @ApiOperation({ summary: 'Navigation - obstacle detection with spoken hints' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(
+    FileInterceptor('image', {
+      fileFilter: (req, file, cb) => {
+        const ok = /^image\//i.test(file.mimetype) || /^video\//i.test(file.mimetype);
+        if (ok) return cb(null, true);
+        return cb(new Error('Only image or video files are allowed'), false);
+      },
+    }),
+  )
   async navigate(@UploadedFile() file: Express.Multer.File, @Res() res: any) {
     if (!file?.buffer) throw new BadRequestException('image file required');
+    if (!this.imageOrVideo(file)) throw new BadRequestException('Only image or video files are allowed');
     const result = await this.visionService.getNavigationHints(file.buffer);
-    return res.status(200).json({
-      success: true,
-      message: 'Navigation analysis complete',
-      data: result,
-      status: 200,
-    });
+    return res.status(200).json({ success: true, message: 'Navigation analysis complete', data: result, status: 200 });
   }
 
   @Post('navigate/base64')
@@ -251,21 +122,22 @@ Detect obstacles for navigation. Returns objects and TTS-ready hints
   }
 
   @Post('analyze')
-  @ApiOperation({
-    summary: 'Full scene analysis: OCR + obstacles',
-    description: 'Combines OCR and navigation for comprehensive scene understanding.',
-  })
+  @ApiOperation({ summary: 'Full scene analysis: OCR + obstacles' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({ schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
-  @UseInterceptors(FileInterceptor('image'))
+  @UseInterceptors(
+    FileInterceptor('image', {
+      fileFilter: (req, file, cb) => {
+        const ok = /^image\//i.test(file.mimetype) || /^video\//i.test(file.mimetype);
+        if (ok) return cb(null, true);
+        return cb(new Error('Only image or video files are allowed'), false);
+      },
+    }),
+  )
   async analyze(@UploadedFile() file: Express.Multer.File, @Res() res: any) {
     if (!file?.buffer) throw new BadRequestException('image file required');
+    if (!this.imageOrVideo(file)) throw new BadRequestException('Only image or video files are allowed');
     const result = await this.visionService.analyzeScene(file.buffer);
-    return res.status(200).json({
-      success: true,
-      message: 'Scene analysis complete',
-      data: result,
-      status: 200,
-    });
+    return res.status(200).json({ success: true, message: 'Scene analysis complete', data: result, status: 200 });
   }
 }

@@ -36,7 +36,13 @@ export class SubscriptionService {
 
   async getUserTier(userId?: string): Promise<'free' | 'subscribed'> {
     if (!userId) return 'free';
-    const user = await this.userModel.findById(userId).select('subscriptionTier').lean();
-    return (user?.subscriptionTier as 'free' | 'subscribed') || 'free';
+    const userModelAny = this.userModel as any;
+    const rawUser: any = await userModelAny
+      .findOne({ _id: userId } as any)
+      .select('subscriptionTier')
+      .lean()
+      .exec();
+
+    return (rawUser?.subscriptionTier as 'free' | 'subscribed') || 'free';
   }
 }

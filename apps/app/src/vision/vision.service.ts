@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import * as FormData from 'form-data';
+import FormData from 'form-data';
 import { VisionDetectionEntity } from './entities/vision-detection.entity';
 
 @Injectable()
@@ -26,7 +26,7 @@ export class VisionService {
 
     try {
       const { data } = await axios.post(url, form, {
-        timeout: 15000,
+        timeout: 30000,
         headers: form.getHeaders(),
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
@@ -78,7 +78,7 @@ export class VisionService {
     form.append('image', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
     try {
       const { data } = await axios.post(url, form, {
-        timeout: 20000,
+        timeout: 60000,
         headers: form.getHeaders(),
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
@@ -106,7 +106,7 @@ export class VisionService {
     form.append('image', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
     try {
       const { data } = await axios.post(url, form, {
-        timeout: 15000,
+        timeout: 30000,
         headers: form.getHeaders(),
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
@@ -143,7 +143,7 @@ export class VisionService {
     form.append('image', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
     try {
       const { data } = await axios.post(url, form, {
-        timeout: 25000,
+        timeout: 60000,
         headers: form.getHeaders(),
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
