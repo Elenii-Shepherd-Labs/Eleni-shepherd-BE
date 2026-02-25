@@ -7,11 +7,25 @@ Listens on http://localhost:5000
 """
 import base64
 import io
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+# Load environment variables from .env when present
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    # python-dotenv not installed; environment variables may be provided by the host
+    pass
+
 app = Flask(__name__)
 CORS(app)
+
+# Runtime config from env
+HOST = os.getenv('HOST', '0.0.0.0')
+PORT = int(os.getenv('PORT', '5000'))
+DEBUG = str(os.getenv('DEBUG', 'false')).lower() in ('1', 'true', 'yes')
 
 # --- YOLO Object Detection (obstacles for navigation) ---
 OBSTACLE_LABELS = {'person', 'chair', 'couch', 'table', 'bottle', 'cup', 'car', 'bicycle', 'motorcycle', 'bus', 'truck', 'stairs', 'door', 'tv', 'laptop', 'keyboard', 'cell phone', 'backpack', 'umbrella', 'handbag', 'bench', 'traffic light', 'fire hydrant', 'stop sign', 'potted plant', 'bed', 'dining table', 'toilet', 'books', 'clock', 'vase'}
