@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Res, HttpException } from '@nestjs/common';
+import { Controller, Post, Body, Res, HttpException, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import {
   ApiTags,
@@ -8,8 +8,10 @@ import {
 } from '@nestjs/swagger';
 import { TextToSpeechService } from './text-to-speech.service';
 import { GenerateSpeechDto, SpeechResponseDto } from './dto';
+import { OptionalAuthGuard } from '../common/guards/optional-auth.guard';
 
 @ApiTags('Text-to-Speech')
+@UseGuards(OptionalAuthGuard)
 @Controller('text-to-speech')
 export class TextToSpeechController {
   constructor(private readonly textToSpeechService: TextToSpeechService) {}

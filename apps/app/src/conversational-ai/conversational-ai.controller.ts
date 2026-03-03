@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, Get, Delete, HttpCode, NotFoundException, Res } from '@nestjs/common';
+import { Controller, Post, Body, Param, Get, Delete, HttpCode, NotFoundException, Res, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -14,8 +14,10 @@ import {
   SessionResponseDto,
 } from './dto';
 import { Response } from 'express';
+import { OptionalAuthGuard } from '../common/guards/optional-auth.guard';
 
 @ApiTags('Conversational AI')
+@UseGuards(OptionalAuthGuard)
 @Controller('conversational-ai')
 export class ConversationalAiController {
   constructor(private readonly conversationService: ConversationService) {}

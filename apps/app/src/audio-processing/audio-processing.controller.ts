@@ -1,11 +1,13 @@
-import { Body, Controller, Post, UploadedFile, UseInterceptors, Logger, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Post, UploadedFile, UseInterceptors, Logger, BadRequestException, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { AudioProcessingService } from './audio-processing.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProcessChunkDto, AlwaysListenDto, TapToListenDto } from './dto';
+import { OptionalAuthGuard } from '../common/guards/optional-auth.guard';
 
 @Controller('audio-processing')
 @ApiTags('Audio Processing')
+@UseGuards(OptionalAuthGuard)
 export class AudioProcessingController {
 	private readonly logger = new Logger(AudioProcessingController.name);
 
