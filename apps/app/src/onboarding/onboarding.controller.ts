@@ -11,7 +11,6 @@ import {
   Res,
   HttpCode,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { Express, Request, Response } from 'express';
@@ -29,9 +28,10 @@ import {
   ApiResponse,
   ApiQuery,
 } from '@nestjs/swagger';
+import { OptionalAuthGuard } from '../common/guards/optional-auth.guard';
 
 @ApiTags('Onboarding')
-@UseGuards(AuthGuard('google'))
+@UseGuards(OptionalAuthGuard)
 @Controller('onboard')
 export class OnboardingController {
   constructor(

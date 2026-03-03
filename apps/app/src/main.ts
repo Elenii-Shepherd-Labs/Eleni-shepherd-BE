@@ -10,9 +10,33 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
+  // Enhanced CORS configuration for mobile and web clients
   app.enableCors({
-    origin: config.get('app.cors.origin') || '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:19000', // Expo dev client
+        'http://localhost:19001',
+        /^http:\/\/192\.168\.\d+\.\d+:3000/, // Local network IP
+        /^http:\/\/192\.168\.\d+\.\d+:3001/,
+        'https://eleni-shepherd-be.onrender.com', // Render deployment
+        'capacitor://',
+        'ionic://',
+      ];
+
+      if (!origin || allowedOrigins.some(allowed => {
+        if (allowed instanceof RegExp) return allowed.test(origin);
+        return origin === allowed;
+      })) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-ID', 'x-session-id'],
   });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -122,9 +146,10 @@ All API responses follow a standardized format:
   });
 
   const port = config.get('app.port') || 3000;
-  await app.listen(port);
+  // Explicitly bind to 0.0.0.0 so emulators and devices can reach the server
+  await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
-  console.log(`Server listening on port ${port}`);
+  console.log(`Server listening on ${await app.getUrl()}`);
 }
 
 bootstrap();
