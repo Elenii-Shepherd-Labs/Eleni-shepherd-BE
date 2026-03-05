@@ -105,15 +105,18 @@ Callback URL for Google OAuth 2.0. This endpoint:
         }
 
         // send user data and let frontend pick redirect
-        return res.json({
-          success: true,
-        redirectUrl: process.env.SUCCESS_REDIRECT_URL || '/auth/success',
-          user: {
-            id: dbUser.googleId,
-            email: dbUser.email,
-            displayName: dbUser.username,
-          },
-        });
+        return res.redirect(
+          process.env.SUCCESS_REDIRECT_URL || '/auth/success',
+        );
+        // return res.json({
+        // //success: true,
+        // redirectUrl: process.env.SUCCESS_REDIRECT_URL || '/auth/success',
+        //   user: {
+        //     id: dbUser.googleId,
+        //     email: dbUser.email,
+        //     displayName: dbUser.username,
+        //   },
+        // });
       });
     } catch (error) {
       console.error('OAuth callback error:', error);
