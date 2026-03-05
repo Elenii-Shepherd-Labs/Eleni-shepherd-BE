@@ -22,7 +22,10 @@ export class VisionService {
     const url = `${baseUrl}/detect`;
 
     const form = new FormData();
-    form.append('image', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
+    form.append('image', imageBuffer, {
+      filename: 'image.jpg',
+      contentType: 'image/jpeg',
+    });
 
     try {
       const { data } = await axios.post(url, form, {
@@ -63,7 +66,9 @@ export class VisionService {
   /**
    * Receive base64 image (e.g. from ESP32-CAM) and run detection
    */
-  async detectFromBase64(imageBase64: string): Promise<VisionDetectionEntity[]> {
+  async detectFromBase64(
+    imageBase64: string,
+  ): Promise<VisionDetectionEntity[]> {
     const buf = Buffer.from(imageBase64, 'base64');
     return this.detectObjects(buf);
   }
@@ -75,7 +80,10 @@ export class VisionService {
     const baseUrl = this.getServiceUrl();
     const url = `${baseUrl}/ocr`;
     const form = new FormData();
-    form.append('image', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
+    form.append('image', imageBuffer, {
+      filename: 'image.jpg',
+      contentType: 'image/jpeg',
+    });
     try {
       const { data } = await axios.post(url, form, {
         timeout: 60000,
@@ -103,7 +111,10 @@ export class VisionService {
     const baseUrl = this.getServiceUrl();
     const url = `${baseUrl}/navigate`;
     const form = new FormData();
-    form.append('image', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
+    form.append('image', imageBuffer, {
+      filename: 'image.jpg',
+      contentType: 'image/jpeg',
+    });
     try {
       const { data } = await axios.post(url, form, {
         timeout: 30000,
@@ -121,7 +132,8 @@ export class VisionService {
         return {
           obstacles: [],
           hints: [],
-          speech: 'Vision service unavailable. Start the Python microservice for obstacle detection.',
+          speech:
+            'Vision service unavailable. Start the Python microservice for obstacle detection.',
         };
       }
       throw err;
@@ -140,7 +152,10 @@ export class VisionService {
     const baseUrl = this.getServiceUrl();
     const url = `${baseUrl}/analyze`;
     const form = new FormData();
-    form.append('image', imageBuffer, { filename: 'image.jpg', contentType: 'image/jpeg' });
+    form.append('image', imageBuffer, {
+      filename: 'image.jpg',
+      contentType: 'image/jpeg',
+    });
     try {
       const { data } = await axios.post(url, form, {
         timeout: 60000,
@@ -148,7 +163,9 @@ export class VisionService {
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
       });
-      return data ?? { ocr: { text: '' }, obstacles: [], hints: [], speech: '' };
+      return (
+        data ?? { ocr: { text: '' }, obstacles: [], hints: [], speech: '' }
+      );
     } catch (err: any) {
       if (err.code === 'ECONNREFUSED') {
         return {

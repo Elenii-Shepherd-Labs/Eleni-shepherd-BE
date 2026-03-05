@@ -12,7 +12,8 @@ export class GenerateSpeechDto {
 
   @ApiProperty({
     type: 'string',
-    description: 'Voice to use (alloy, echo, fable, onyx, nova, shimmer for OpenAI)',
+    description:
+      'Voice to use (alloy, echo, fable, onyx, nova, shimmer for OpenAI)',
     required: false,
     example: 'alloy',
   })
@@ -22,7 +23,8 @@ export class GenerateSpeechDto {
 
   @ApiProperty({
     type: 'number',
-    description: 'Speech speed multiplier (0.5 = slower, 1 = normal, 1.2 = faster)',
+    description:
+      'Speech speed multiplier (0.5 = slower, 1 = normal, 1.2 = faster)',
     required: false,
     example: 0.9,
   })

@@ -1,10 +1,15 @@
-import { CanActivate, ExecutionContext, Injectable, Logger } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 
 /**
  * WebSocket Auth Guard
- * 
+ *
  * Protects WebSocket connections by validating the session/JWT token
  * Integrate with your existing auth system
  */
@@ -49,13 +54,13 @@ export class WsAuthGuard implements CanActivate {
 
   private extractToken(client: Socket): string | null {
     const authHeader = client.handshake.headers.authorization;
-    
+
     if (!authHeader) {
       return null;
     }
 
     const [type, token] = authHeader.split(' ');
-    
+
     return type === 'Bearer' ? token : null;
   }
 

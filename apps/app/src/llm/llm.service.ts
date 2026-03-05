@@ -30,19 +30,40 @@ export class LlmService {
     }
   }
 
-  async generateResponse(messages: Message[], context?: string): Promise<IAppResponse> {
+  async generateResponse(
+    messages: Message[],
+    context?: string,
+  ): Promise<IAppResponse> {
     try {
       const systemPrompt = this.buildSystemPrompt(context);
 
       if (this.provider === 'openai' && this.openai) {
         const text = await this.generateOpenAIResponse(messages, systemPrompt);
-        return createAppResponse(true, 'Response generated', { response: text, provider: 'openai' }, 200);
+        return createAppResponse(
+          true,
+          'Response generated',
+          { response: text, provider: 'openai' },
+          200,
+        );
       } else if (this.provider === 'anthropic' && this.anthropic) {
-        const text = await this.generateAnthropicResponse(messages, systemPrompt);
-        return createAppResponse(true, 'Response generated', { response: text, provider: 'anthropic' }, 200);
+        const text = await this.generateAnthropicResponse(
+          messages,
+          systemPrompt,
+        );
+        return createAppResponse(
+          true,
+          'Response generated',
+          { response: text, provider: 'anthropic' },
+          200,
+        );
       } else {
         const txt = this.generateMockResponse(messages);
-        return createAppResponse(true, 'Mock response', { response: txt, provider: 'mock' }, 200);
+        return createAppResponse(
+          true,
+          'Mock response',
+          { response: txt, provider: 'mock' },
+          200,
+        );
       }
     } catch (error) {
       this.logger.error(`Error generating response: ${error.message}`);
@@ -82,7 +103,10 @@ export class LlmService {
       max_tokens: 500,
     });
 
-    return completion.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
+    return (
+      completion.choices[0]?.message?.content ||
+      'I apologize, but I could not generate a response.'
+    );
   }
 
   private async generateAnthropicResponse(
@@ -102,7 +126,7 @@ export class LlmService {
     });
 
     const content = response.content[0];
-    
+
     if (content.type === 'text') {
       return content.text;
     }
@@ -112,7 +136,7 @@ export class LlmService {
 
   private generateMockResponse(messages: Message[]): string {
     const lastMessage = messages[messages.length - 1];
-    
+
     return `I received your message: "${lastMessage.content}". This is a mock response because no API keys are configured. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable.`;
   }
 
@@ -149,7 +173,8 @@ export class LlmService {
     } else {
       // Fallback to non-streaming
       const response = await this.generateResponse(messages, context);
-      yield response.data?.response || 'I apologize, but I could not generate a response.';
+      yield response.data?.response ||
+        'I apologize, but I could not generate a response.';
     }
   }
 }

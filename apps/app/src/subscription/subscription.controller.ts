@@ -1,9 +1,5 @@
 import { Controller, Get, Req } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
 import { LANGUAGE_NAMES } from './subscription.constants';
 
@@ -55,7 +51,10 @@ Use this to enable/disable language options in TTS, STT, and conversational AI.
     if (userId) {
       tier = await this.subscriptionService.getUserTier(userId);
     }
-    const languages = this.subscriptionService.getAllowedLanguages(userId, tier);
+    const languages = this.subscriptionService.getAllowedLanguages(
+      userId,
+      tier,
+    );
     const languageNames = languages.reduce((acc, code) => {
       acc[code] = LANGUAGE_NAMES[code] || code;
       return acc;

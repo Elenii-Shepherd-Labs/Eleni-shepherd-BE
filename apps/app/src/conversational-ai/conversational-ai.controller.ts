@@ -1,4 +1,15 @@
-import { Controller, Post, Body, Param, Get, Delete, HttpCode, NotFoundException, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  Get,
+  Delete,
+  HttpCode,
+  NotFoundException,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -75,7 +86,10 @@ const sessionId = data.data.sessionId;
         data: {
           type: 'object',
           properties: {
-            sessionId: { type: 'string', example: 'session-1708041600000-abc123' },
+            sessionId: {
+              type: 'string',
+              example: 'session-1708041600000-abc123',
+            },
             userId: { type: 'string', example: 'user-123' },
             createdAt: { type: 'string', format: 'date-time' },
             messages: { type: 'array', example: [] },
@@ -93,7 +107,9 @@ const sessionId = data.data.sessionId;
     @Body() createSessionDto: CreateSessionDto,
     @Res() res: Response,
   ) {
-    const sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const sessionId = `session-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(7)}`;
     const resp = await this.conversationService.initializeSession(
       sessionId,
       createSessionDto.userId,
@@ -155,7 +171,10 @@ const session = await response.json();
     },
   })
   @ApiResponse({ status: 404, description: 'Session not found' })
-  async getSession(@Param('sessionId') sessionId: string, @Res() res: Response) {
+  async getSession(
+    @Param('sessionId') sessionId: string,
+    @Res() res: Response,
+  ) {
     const resp = await this.conversationService.getSession(sessionId);
     if (!resp || resp.status === 404) {
       throw new NotFoundException(`Session not found: ${sessionId}`);
@@ -316,7 +335,10 @@ const response = await fetch(\`http://localhost:3000/conversational-ai/sessions/
     @Body() addContextDto: AddContextDto,
     @Res() res: Response,
   ) {
-    const resp = await this.conversationService.addContext(sessionId, addContextDto.context);
+    const resp = await this.conversationService.addContext(
+      sessionId,
+      addContextDto.context,
+    );
     return res.status(resp.status || 200).json(resp);
   }
 
@@ -365,7 +387,10 @@ const response = await fetch(\`http://localhost:3000/conversational-ai/sessions/
       },
     },
   })
-  async endSession(@Param('sessionId') sessionId: string, @Res() res: Response) {
+  async endSession(
+    @Param('sessionId') sessionId: string,
+    @Res() res: Response,
+  ) {
     const resp = await this.conversationService.endSession(sessionId);
     return res.status(resp.status || 200).json(resp);
   }
@@ -419,7 +444,10 @@ const response = await fetch(\`http://localhost:3000/conversational-ai/sessions/
       },
     },
   })
-  async clearHistory(@Param('sessionId') sessionId: string, @Res() res: Response) {
+  async clearHistory(
+    @Param('sessionId') sessionId: string,
+    @Res() res: Response,
+  ) {
     const resp = await this.conversationService.clearHistory(sessionId);
     return res.status(resp.status || 200).json(resp);
   }

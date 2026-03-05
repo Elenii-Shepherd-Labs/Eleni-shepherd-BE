@@ -23,8 +23,7 @@ export class ProcessMessageDto {
 
   @ApiProperty({
     type: 'string',
-    description:
-      'Optional context to help the LLM provide better responses',
+    description: 'Optional context to help the LLM provide better responses',
     required: false,
   })
   @IsOptional()
