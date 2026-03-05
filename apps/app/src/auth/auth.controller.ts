@@ -65,7 +65,7 @@ Callback URL for Google OAuth 2.0. This endpoint:
       if (err) {
         return res.redirect('/login?error=true');
       }
-      res.redirect('/');
+      res.redirect(process.env.SUCCESS_REDIRECT_URL);
     });
   }
 
@@ -73,7 +73,6 @@ Callback URL for Google OAuth 2.0. This endpoint:
     summary: 'Get authenticated user profile',
     description: `
 Returns the profile of the currently authenticated user.
-
 **Authentication**: Required (via session cookie)
 
 **Frontend Implementation**:
