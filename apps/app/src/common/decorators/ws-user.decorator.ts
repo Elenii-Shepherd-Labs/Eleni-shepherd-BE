@@ -3,10 +3,10 @@ import { Socket } from 'socket.io';
 
 /**
  * WebSocket User Decorator
- * 
+ *
  * Extracts the authenticated user from the WebSocket connection
  * Use with @WsAuthGuard()
- * 
+ *
  * Usage:
  * @SubscribeMessage('some-event')
  * @UseGuards(WsAuthGuard)

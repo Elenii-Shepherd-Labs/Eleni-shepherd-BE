@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UseInterceptors, UploadedFile, BadRequestException, HttpException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  HttpException,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -85,7 +93,8 @@ const handleAudioUpload = async (audioFile: File) => {
         },
         language: {
           type: 'string',
-          description: 'ISO 639-1 language code (en, es, fr, de, etc.). Defaults to auto-detect.',
+          description:
+            'ISO 639-1 language code (en, es, fr, de, etc.). Defaults to auto-detect.',
           example: 'en',
         },
       },
@@ -102,7 +111,11 @@ const handleAudioUpload = async (audioFile: File) => {
         data: {
           type: 'object',
           properties: {
-            text: { type: 'string', description: 'Transcribed text', example: 'Hello, how are you?' },
+            text: {
+              type: 'string',
+              description: 'Transcribed text',
+              example: 'Hello, how are you?',
+            },
             isFinal: { type: 'boolean', example: true },
             provider: { type: 'string', example: 'openai' },
           },
@@ -192,7 +205,8 @@ console.log('Voice detected:', result.data.voiceDetected);
         },
         threshold: {
           type: 'number',
-          description: 'Energy threshold for voice detection (0-1000). Lower = more sensitive.',
+          description:
+            'Energy threshold for voice detection (0-1000). Lower = more sensitive.',
           example: 500,
         },
       },
@@ -209,8 +223,16 @@ console.log('Voice detected:', result.data.voiceDetected);
         data: {
           type: 'object',
           properties: {
-            voiceDetected: { type: 'boolean', description: 'Whether voice was detected', example: true },
-            audioLength: { type: 'number', description: 'Audio length in bytes', example: 32000 },
+            voiceDetected: {
+              type: 'boolean',
+              description: 'Whether voice was detected',
+              example: true,
+            },
+            audioLength: {
+              type: 'number',
+              description: 'Audio length in bytes',
+              example: 32000,
+            },
           },
         },
       },

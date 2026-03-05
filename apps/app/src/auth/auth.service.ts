@@ -7,7 +7,11 @@ import { User } from './user.schema';
 export class AuthService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
-  async validateUser(googleId: string, email: string, username: string): Promise<User> {
+  async validateUser(
+    googleId: string,
+    email: string,
+    username: string,
+  ): Promise<User> {
     let user = await this.userModel.findOne({ googleId });
     if (!user) {
       user = await this.userModel.create({ googleId, email, username });

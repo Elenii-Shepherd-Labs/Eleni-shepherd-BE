@@ -1,5 +1,20 @@
-import { Body, Controller, Post, UploadedFile, UseInterceptors, Logger, BadRequestException, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+  Logger,
+  BadRequestException,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBody,
+  ApiResponse,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { AudioProcessingService } from './audio-processing.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProcessChunkDto, AlwaysListenDto, TapToListenDto } from './dto';
@@ -9,14 +24,14 @@ import { OptionalAuthGuard } from '../common/guards/optional-auth.guard';
 @ApiTags('Audio Processing')
 @UseGuards(OptionalAuthGuard)
 export class AudioProcessingController {
-	private readonly logger = new Logger(AudioProcessingController.name);
+  private readonly logger = new Logger(AudioProcessingController.name);
 
-	constructor(private readonly audioService: AudioProcessingService) {}
+  constructor(private readonly audioService: AudioProcessingService) {}
 
-	@Post('chunk')
-	@ApiOperation({
-		summary: 'Process audio chunk for transcription',
-		description: `
+  @Post('chunk')
+  @ApiOperation({
+    summary: 'Process audio chunk for transcription',
+    description: `
 Process a base64-encoded audio chunk for transcription.
 
 Supports both **Always-Listen** and **Tap-to-Listen** modes.
@@ -72,43 +87,43 @@ for (let i = 0; i < data.length; i++) {
 const base64 = btoa(String.fromCharCode(...new Uint8Array(int16.buffer)));
 \`\`\`
 		`,
-	})
-	@ApiBody({ type: ProcessChunkDto })
-	@ApiResponse({
-		status: 200,
-		description: 'Audio chunk processed',
-		schema: {
-			properties: {
-				success: { type: 'boolean', example: true },
-				message: { type: 'string' },
-				data: {
-					type: 'object',
-					properties: {
-						transcript: { type: 'string', example: 'hello world' },
-						isFinal: { type: 'boolean', example: true },
-						confidence: { type: 'number', example: 0.95 },
-					},
-				},
-			},
-		},
-	})
-	async processChunk(@Body() body: ProcessChunkDto) {
-		const { sessionId, audioBase64, sampleRate } = body;
-		const audioChunk = Buffer.from(audioBase64, 'base64');
+  })
+  @ApiBody({ type: ProcessChunkDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Audio chunk processed',
+    schema: {
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            transcript: { type: 'string', example: 'hello world' },
+            isFinal: { type: 'boolean', example: true },
+            confidence: { type: 'number', example: 0.95 },
+          },
+        },
+      },
+    },
+  })
+  async processChunk(@Body() body: ProcessChunkDto) {
+    const { sessionId, audioBase64, sampleRate } = body;
+    const audioChunk = Buffer.from(audioBase64, 'base64');
 
-		const result = await this.audioService.processAudioChunk(
-			sessionId,
-			audioChunk,
-			sampleRate || 16000,
-		);
+    const result = await this.audioService.processAudioChunk(
+      sessionId,
+      audioChunk,
+      sampleRate || 16000,
+    );
 
-		return result;
-	}
+    return result;
+  }
 
-	@Post('chunk-file')
-	@ApiOperation({
-		summary: 'Upload WAV/audio file for processing',
-		description: `
+  @Post('chunk-file')
+  @ApiOperation({
+    summary: 'Upload WAV/audio file for processing',
+    description: `
 Upload an audio file (multipart) for transcription and processing.
 
 Useful for handling file uploads from HTML file inputs or recorded audio blobs.
@@ -168,64 +183,73 @@ mediaRecorder.onstop = async () => {
 - Support file drag-and-drop
 - Better UX than base64 encoding
 		`,
-	})
-	@ApiConsumes('multipart/form-data')
-	@ApiBody({
-		schema: {
-			type: 'object',
-			properties: {
-				sessionId: { type: 'string', description: 'Conversation session ID' },
-				file: { type: 'string', format: 'binary', description: 'Audio file to process' },
-			},
-			required: ['sessionId', 'file'],
-		},
-	})
-	@UseInterceptors(FileInterceptor('file'))
-	@ApiResponse({
-		status: 200,
-		description: 'Audio file processed',
-		schema: {
-			properties: {
-				success: { type: 'boolean', example: true },
-				message: { type: 'string' },
-				data: {
-					type: 'object',
-					properties: {
-						transcript: { type: 'string', example: 'hello world' },
-						isFinal: { type: 'boolean', example: true },
-					},
-				},
-			},
-		},
-	})
-	async processChunkFile(@Body() body: any, @UploadedFile() file: Express.Multer.File) {
-		this.logger.debug(`processChunkFile received body: ${JSON.stringify(body)}`);
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        sessionId: { type: 'string', description: 'Conversation session ID' },
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Audio file to process',
+        },
+      },
+      required: ['sessionId', 'file'],
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiResponse({
+    status: 200,
+    description: 'Audio file processed',
+    schema: {
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            transcript: { type: 'string', example: 'hello world' },
+            isFinal: { type: 'boolean', example: true },
+          },
+        },
+      },
+    },
+  })
+  async processChunkFile(
+    @Body() body: any,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    this.logger.debug(
+      `processChunkFile received body: ${JSON.stringify(body)}`,
+    );
 
-		const sessionId = body?.sessionId;
+    const sessionId = body?.sessionId;
 
-		if (!sessionId) {
-			throw new BadRequestException('sessionId is required in form data');
-		}
+    if (!sessionId) {
+      throw new BadRequestException('sessionId is required in form data');
+    }
 
-		if (!file) {
-			throw new BadRequestException('file is required');
-		}
+    if (!file) {
+      throw new BadRequestException('file is required');
+    }
 
-		const audioChunk = file.buffer;
+    const audioChunk = file.buffer;
 
-		const result = await this.audioService.processAudioChunk(
-			sessionId,
-			audioChunk,
-			16000,
-		);
+    const result = await this.audioService.processAudioChunk(
+      sessionId,
+      audioChunk,
+      16000,
+    );
 
-		return result;
-	}
+    return result;
+  }
 
-	@Post('always-listen')
-	@ApiOperation({
-		summary: 'Enable/disable always-listening mode',
-		description: `
+  @Post('always-listen')
+  @ApiOperation({
+    summary: 'Enable/disable always-listening mode',
+    description: `
 Toggle "Always-Listening" mode for hands-free operation.
 
 In this mode, the system listens continuously. Users say the wake-word "**Hey Eleni**" to activate transcription.
@@ -278,42 +302,42 @@ await fetch('...', {
 - Accessibility feature
 - Always-on voice control
 		`,
-	})
-	@ApiBody({ type: AlwaysListenDto })
-	@ApiResponse({
-		status: 200,
-		description: 'Always-listen mode toggled',
-		schema: {
-			properties: {
-				success: { type: 'boolean', example: true },
-				message: { type: 'string' },
-				data: {
-					type: 'object',
-					properties: {
-						sessionId: { type: 'string', example: 'session-123' },
-						alwaysListening: { type: 'boolean', example: true },
-					},
-				},
-			},
-		},
-	})
-	async setAlwaysListen(@Body() body: any) {
-		this.logger.debug(`setAlwaysListen received body: ${JSON.stringify(body)}`);
+  })
+  @ApiBody({ type: AlwaysListenDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Always-listen mode toggled',
+    schema: {
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            sessionId: { type: 'string', example: 'session-123' },
+            alwaysListening: { type: 'boolean', example: true },
+          },
+        },
+      },
+    },
+  })
+  async setAlwaysListen(@Body() body: any) {
+    this.logger.debug(`setAlwaysListen received body: ${JSON.stringify(body)}`);
 
-		const { sessionId, enabled } = body || {};
+    const { sessionId, enabled } = body || {};
 
-		if (!sessionId) {
-			throw new BadRequestException('sessionId is required');
-		}
+    if (!sessionId) {
+      throw new BadRequestException('sessionId is required');
+    }
 
-		await this.audioService.setAlwaysListening(sessionId, !!enabled);
-		return { sessionId, alwaysListening: !!enabled };
-	}
+    await this.audioService.setAlwaysListening(sessionId, !!enabled);
+    return { sessionId, alwaysListening: !!enabled };
+  }
 
-	@Post('tap-to-listen')
-	@ApiOperation({
-		summary: 'Enable tap-to-listen mode (one-shot recording)',
-		description: `
+  @Post('tap-to-listen')
+  @ApiOperation({
+    summary: 'Enable tap-to-listen mode (one-shot recording)',
+    description: `
 Activate "Tap-to-Listen" mode for explicit voice input.
 
 The user taps a button, and the next audio chunk is transcribed. Simpler than always-listening for push-to-talk interactions.
@@ -367,35 +391,35 @@ const handleTapToListen = async (sessionId: string) => {
 - Assistive technology
 - Privacy-conscious applications
 		`,
-	})
-	@ApiBody({ type: TapToListenDto })
-	@ApiResponse({
-		status: 200,
-		description: 'Tap-to-listen activated',
-		schema: {
-			properties: {
-				success: { type: 'boolean', example: true },
-				message: { type: 'string' },
-				data: {
-					type: 'object',
-					properties: {
-						sessionId: { type: 'string', example: 'session-123' },
-						tapped: { type: 'boolean', example: true },
-					},
-				},
-			},
-		},
-	})
-	async tapToListen(@Body() body: any) {
-		this.logger.debug(`tapToListen received body: ${JSON.stringify(body)}`);
+  })
+  @ApiBody({ type: TapToListenDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Tap-to-listen activated',
+    schema: {
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string' },
+        data: {
+          type: 'object',
+          properties: {
+            sessionId: { type: 'string', example: 'session-123' },
+            tapped: { type: 'boolean', example: true },
+          },
+        },
+      },
+    },
+  })
+  async tapToListen(@Body() body: any) {
+    this.logger.debug(`tapToListen received body: ${JSON.stringify(body)}`);
 
-		const { sessionId } = body || {};
+    const { sessionId } = body || {};
 
-		if (!sessionId) {
-			throw new BadRequestException('sessionId is required');
-		}
+    if (!sessionId) {
+      throw new BadRequestException('sessionId is required');
+    }
 
-		await this.audioService.tapToListen(sessionId);
-		return { sessionId, tapped: true };
-	}
+    await this.audioService.tapToListen(sessionId);
+    return { sessionId, tapped: true };
+  }
 }

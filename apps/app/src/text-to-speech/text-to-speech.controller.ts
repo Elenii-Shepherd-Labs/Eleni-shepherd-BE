@@ -1,11 +1,13 @@
-import { Controller, Post, Body, Res, HttpException, UseGuards } from '@nestjs/common';
-import { Response } from 'express';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-} from '@nestjs/swagger';
+  Controller,
+  Post,
+  Body,
+  Res,
+  HttpException,
+  UseGuards,
+} from '@nestjs/common';
+import { Response } from 'express';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { TextToSpeechService } from './text-to-speech.service';
 import { GenerateSpeechDto, SpeechResponseDto } from './dto';
 import { OptionalAuthGuard } from '../common/guards/optional-auth.guard';
@@ -209,7 +211,8 @@ if (result.success) {
           properties: {
             audio: {
               type: 'string',
-              description: 'Base64-encoded MP3 audio data. Use as data:audio/mpeg;base64,...',
+              description:
+                'Base64-encoded MP3 audio data. Use as data:audio/mpeg;base64,...',
             },
             provider: {
               type: 'string',
@@ -243,7 +246,8 @@ if (result.success) {
       audio: audioBuffer.toString('base64'),
       provider: 'openai',
       duration: Math.ceil(generateSpeechDto.text.length / 150), // Rough estimate
-      message: 'Audio encoded in base64. Use in client-side: data:audio/mpeg;base64,<audio>',
+      message:
+        'Audio encoded in base64. Use in client-side: data:audio/mpeg;base64,<audio>',
     };
   }
 
@@ -287,7 +291,10 @@ console.log('Available voices:', result.data.voices);
                 properties: {
                   id: { type: 'string', example: 'nova' },
                   name: { type: 'string', example: 'Nova' },
-                  description: { type: 'string', example: 'Bright, feminine voice' },
+                  description: {
+                    type: 'string',
+                    example: 'Bright, feminine voice',
+                  },
                 },
               },
             },

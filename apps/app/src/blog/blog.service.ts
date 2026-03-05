@@ -3,7 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { BlogArticleEntity } from './entities/blog-article.entity';
 
-type BlogCategory = 'entertainment' | 'sports' | 'technology' | 'news' | 'general';
+type BlogCategory =
+  | 'entertainment'
+  | 'sports'
+  | 'technology'
+  | 'news'
+  | 'general';
 
 @Injectable()
 export class BlogService {
@@ -14,7 +19,7 @@ export class BlogService {
    */
   async getArticles(
     category: BlogCategory = 'general',
-    limit: number = 20,
+    limit = 20,
   ): Promise<BlogArticleEntity[]> {
     const gnewsKey = process.env.GNEWS_API_KEY;
     if (gnewsKey) {
@@ -52,7 +57,9 @@ export class BlogService {
     }));
   }
 
-  private async fetchFromHackerNews(limit: number): Promise<BlogArticleEntity[]> {
+  private async fetchFromHackerNews(
+    limit: number,
+  ): Promise<BlogArticleEntity[]> {
     const topUrl = 'https://hacker-news.firebaseio.com/v0/topstories.json';
     const { data: ids } = await axios.get<number[]>(topUrl, { timeout: 8000 });
     const slice = (ids || []).slice(0, Math.min(limit, 30));

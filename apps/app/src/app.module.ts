@@ -21,7 +21,11 @@ import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env', load: [configuration] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+      load: [configuration],
+    }),
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],

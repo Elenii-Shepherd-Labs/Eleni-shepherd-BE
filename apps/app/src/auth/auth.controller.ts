@@ -1,5 +1,10 @@
 import { Controller, Get, Req, Res, UseGuards, HttpCode } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiCookieAuth,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
@@ -40,33 +45,119 @@ Callback URL for Google OAuth 2.0. This endpoint:
 1. Receives the authorization code from Google
 2. Validates/creates the user in the database
 3. Establishes a session for the user
-4. Redirects to home page
+4. Returns a JSON payload containing user info and a client redirect URL
 
-**Note**: This is called automatically by Google. Frontend developers do not call this directly.
+**Note**: This is called automatically by Google. Frontend developers do not call this directly; the frontend should read the redirect URL from the response and navigate there.
     `,
   })
   @ApiResponse({
-    status: 302,
-    description: 'Redirect to home page on success or login error page on failure',
+    status: 200,
+    description: 'Authentication successful, returns user data and redirect URL',
+    schema: {
+      properties: {
+        success: { type: 'boolean', example: true },
+        redirectUrl: { type: 'string', example: '/auth/success' },
+        user: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: 'google-id-123' },
+            email: { type: 'string', example: 'user@example.com' },
+            displayName: { type: 'string', example: 'John Doe' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Authentication failed',
+    schema: {
+      properties: {
+        success: { type: 'boolean', example: false },
+        message: { type: 'string', example: 'Authentication failed' },
+      },
+    },
   })
   @Get('google/callback')
-  @HttpCode(302)
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const user = req.user;
-    // Validate or create user
-    const dbUser = await this.authService.validateUser(
-      user['id'],
-      user['email'],
-      user['displayName'],
-    );
-    // Store user in session or return token
-    req.login(dbUser, (err) => {
-      if (err) {
-        return res.redirect('/login?error=true');
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication failed - no user data',
+        });
       }
-      res.redirect(process.env.SUCCESS_REDIRECT_URL);
-    });
+
+      const user = req.user;
+      const dbUser = await this.authService.validateUser(
+        user['id'],
+        user['email'],
+        user['displayName'],
+      );
+
+      req.login(dbUser, (err) => {
+        if (err) {
+          return res.status(401).json({
+            success: false,
+            message: 'Session establishment failed',
+          });
+        }
+
+        // send user data and let frontend pick redirect
+        return res.json({
+          success: true,
+        redirectUrl: process.env.SUCCESS_REDIRECT_URL || '/auth/success',
+          user: {
+            id: dbUser.googleId,
+            email: dbUser.email,
+            displayName: dbUser.username,
+          },
+        });
+      });
+    } catch (error) {
+      console.error('OAuth callback error:', error);
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication failed',
+      });
+    }
+  }
+
+  @ApiOperation({
+    summary: 'Authentication success page',
+    description: 'Simple success page shown after successful authentication',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Success message',
+    schema: {
+      properties: {
+        message: { type: 'string', example: 'Authentication successful' },
+      },
+    },
+  })
+  @Get('success')
+  async success(@Req() req: Request) {
+    return { message: 'Authentication successful', user: req.user };
+  }
+
+  @ApiOperation({
+    summary: 'Authentication error page',
+    description: 'Error page shown if authentication fails',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Error message',
+    schema: {
+      properties: {
+        message: { type: 'string', example: 'Authentication failed' },
+      },
+    },
+  })
+  @Get('error')
+  async error() {
+    return { message: 'Authentication failed' };
   }
 
   @ApiOperation({

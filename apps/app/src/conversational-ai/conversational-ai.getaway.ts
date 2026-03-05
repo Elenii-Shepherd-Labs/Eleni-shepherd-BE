@@ -37,10 +37,10 @@ export class ConversationalAiGateway
 
   async handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
-    
+
     // Initialize session
     await this.conversationService.initializeSession(client.id);
-    
+
     client.emit('connected', {
       sessionId: client.id,
       message: 'Connected to conversational AI',
@@ -49,7 +49,7 @@ export class ConversationalAiGateway
 
   async handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
-    
+
     // Cleanup
     await this.conversationService.endSession(client.id);
     await this.audioProcessingService.cleanup(client.id);
@@ -63,7 +63,7 @@ export class ConversationalAiGateway
     // @WsUser() user?: any, // Uncomment for auth
   ) {
     this.logger.log(`Starting conversation for client: ${client.id}`);
-    
+
     if (data.context) {
       await this.conversationService.addContext(client.id, data.context);
     }
@@ -86,7 +86,10 @@ export class ConversationalAiGateway
         data.sampleRate || 16000,
       );
 
-      const resultData = result.data as { transcript?: string; isFinal?: boolean } | null;
+      const resultData = result.data as {
+        transcript?: string;
+        isFinal?: boolean;
+      } | null;
       if (resultData?.transcript) {
         client.emit('transcript', {
           text: resultData.transcript,
@@ -118,10 +121,10 @@ export class ConversationalAiGateway
   @SubscribeMessage('interrupt')
   async handleInterrupt(@ConnectedSocket() client: Socket) {
     this.logger.log(`Interrupt received from client: ${client.id}`);
-    
+
     await this.audioProcessingService.stopAudioPlayback(client.id);
     await this.conversationService.setInterrupted(client.id, true);
-    
+
     client.emit('interrupted', {
       message: 'Current response interrupted',
     });
@@ -133,7 +136,7 @@ export class ConversationalAiGateway
     @MessageBody() data: { context: string },
   ) {
     await this.conversationService.addContext(client.id, data.context);
-    
+
     client.emit('context-updated', {
       message: 'Context added successfully',
     });
@@ -142,7 +145,7 @@ export class ConversationalAiGateway
   @SubscribeMessage('clear-history')
   async handleClearHistory(@ConnectedSocket() client: Socket) {
     await this.conversationService.clearHistory(client.id);
-    
+
     client.emit('history-cleared', {
       message: 'Conversation history cleared',
     });
@@ -157,15 +160,16 @@ export class ConversationalAiGateway
         message,
       );
 
-      const responseText = (response.data as { response?: string })?.response ?? '';
+      const responseText =
+        (response.data as { response?: string })?.response ?? '';
       client.emit('ai-response', {
         text: responseText,
       });
 
       client.emit('processing', { status: 'generating-audio' });
-      
+
       await this.streamAudioResponse(client, responseText);
-      
+
       client.emit('response-complete', {
         message: 'Response complete',
       });
@@ -186,7 +190,9 @@ export class ConversationalAiGateway
       );
 
       for await (const audioChunk of audioStream) {
-        const sessionResp = await this.conversationService.getSession(client.id);
+        const sessionResp = await this.conversationService.getSession(
+          client.id,
+        );
         const session = sessionResp?.data as { interrupted?: boolean } | null;
         if (session?.interrupted) {
           break;

@@ -1,10 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { BlogService } from './blog.service';
 
 @ApiTags('Blog & News')
@@ -88,13 +83,20 @@ for (const article of result.data) {
     @Query('category') category?: string,
     @Query('limit') limit?: string,
   ) {
-    const validCategory = ['entertainment', 'sports', 'technology', 'news', 'general'].includes(
-      category || '',
-    )
+    const validCategory = [
+      'entertainment',
+      'sports',
+      'technology',
+      'news',
+      'general',
+    ].includes(category || '')
       ? (category as any)
       : 'general';
     const limitNum = Math.min(parseInt(limit || '20', 10) || 20, 50);
-    const articles = await this.blogService.getArticles(validCategory, limitNum);
+    const articles = await this.blogService.getArticles(
+      validCategory,
+      limitNum,
+    );
     return {
       success: true,
       message: 'Articles retrieved',

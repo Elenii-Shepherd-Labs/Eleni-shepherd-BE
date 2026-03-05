@@ -6,11 +6,7 @@ import { AudioProcessingService } from './audio-processing.service';
 import { AudioProcessingController } from './audio-processing.controller';
 
 @Module({
-  imports: [
-    ConfigModule,
-    SpeechToTextModule,
-    TextToSpeechModule,
-  ],
+  imports: [ConfigModule, SpeechToTextModule, TextToSpeechModule],
   providers: [AudioProcessingService],
   controllers: [AudioProcessingController],
   exports: [AudioProcessingService],

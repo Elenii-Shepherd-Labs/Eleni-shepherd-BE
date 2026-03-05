@@ -31,9 +31,13 @@ export class RadioStationsService {
   /**
    * Fetch radio stations by country from Radio Browser API
    */
-  async getStationsByCountry(country: string = 'Nigeria'): Promise<RadioStationEntity[]> {
+  async getStationsByCountry(
+    country = 'Nigeria',
+  ): Promise<RadioStationEntity[]> {
     const baseUrl = this.getBaseUrl();
-    const url = `${baseUrl}/json/stations/bycountry/${encodeURIComponent(country)}`;
+    const url = `${baseUrl}/json/stations/bycountry/${encodeURIComponent(
+      country,
+    )}`;
 
     const { data } = await axios.get<RadioBrowserStation[]>(url, {
       timeout: 10000,
@@ -58,7 +62,7 @@ export class RadioStationsService {
    * Fetch stations with optional tag/genre filter
    */
   async getStationsByCountryAndTag(
-    country: string = 'Nigeria',
+    country = 'Nigeria',
     tag?: string,
   ): Promise<RadioStationEntity[]> {
     const stations = await this.getStationsByCountry(country);
