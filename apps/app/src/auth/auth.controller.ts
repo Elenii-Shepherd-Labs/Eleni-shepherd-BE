@@ -106,7 +106,7 @@ Callback URL for Google OAuth 2.0. This endpoint:
 
         // send user data and let frontend pick redirect
         return res.redirect(
-          process.env.SUCCESS_REDIRECT_URL || '/auth/success',
+          process.env.SUCCESS_REDIRECT_URL || 'elenii://Onboarding',
         );
         // return res.json({
         // //success: true,
