@@ -36,6 +36,13 @@ After successful authentication at Google, the user is redirected to the callbac
   @UseGuards(AuthGuard('google'))
   async googleAuth(@Req() req: Request) {
     console.log('[AuthController] Initiating Google OAuth');
+    // store desired redirect in session if provided
+    const desired = req.query.redirectUrl as string | undefined;
+    if (desired) {
+      console.log('[AuthController] saving redirectUrl to session:', desired);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (req.session as any).redirectUrl = desired;
+    }
     // Initiates Google OAuth authentication
   }
 
@@ -111,8 +118,12 @@ Callback URL for Google OAuth 2.0. This endpoint:
         }
 
         // Determine redirect URL
-        const redirectUrl = process.env.SUCCESS_REDIRECT_URL || 'elenii://Onboarding';
-        console.log('[AuthController] Redirecting to:', redirectUrl);
+        // allow override via session (set in /auth/google)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sessionRedirect = (req.session as any)?.redirectUrl as string | undefined;
+        const redirectUrl =
+          sessionRedirect || process.env.SUCCESS_REDIRECT_URL || 'elenii://Onboarding';
+        console.log('[AuthController] Redirecting to:', redirectUrl, '(session override:', sessionRedirect, ')');
 
         // For mobile deep links, append user data as query param
         if (redirectUrl.startsWith('elenii://') || redirectUrl.startsWith('exp://')) {
