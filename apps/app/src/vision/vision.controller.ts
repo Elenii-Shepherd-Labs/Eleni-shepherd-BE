@@ -55,10 +55,6 @@ export class VisionController {
     @UploadedFile() file: Express.Multer.File,
     @Res() res: any,
   ) {
-  async detectFromFile(
-    @UploadedFile() file: Express.Multer.File,
-    @Res() res: any,
-  ) {
     if (!file?.buffer) throw new BadRequestException('image file is required');
     if (!this.isImage(file))
       throw new BadRequestException('Only image files are allowed');
