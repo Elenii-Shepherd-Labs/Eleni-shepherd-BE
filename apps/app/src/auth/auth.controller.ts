@@ -115,7 +115,7 @@ Callback URL for Google OAuth 2.0. This endpoint:
         console.log('[AuthController] Redirecting to:', redirectUrl);
 
         // For mobile deep links, append user data as query param
-        if (redirectUrl.startsWith('elenii://')) {
+        if (redirectUrl.startsWith('elenii://') || redirectUrl.startsWith('exp://')) {
           const userData = encodeURIComponent(JSON.stringify({
             id: dbUser.googleId,
             email: dbUser.email,
