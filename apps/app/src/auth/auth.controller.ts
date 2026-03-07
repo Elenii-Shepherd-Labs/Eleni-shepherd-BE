@@ -35,6 +35,7 @@ After successful authentication at Google, the user is redirected to the callbac
   @HttpCode(302)
   @UseGuards(AuthGuard('google'))
   async googleAuth(@Req() req: Request) {
+    console.log('[AuthController] Initiating Google OAuth');
     // Initiates Google OAuth authentication
   }
 
@@ -81,23 +82,28 @@ Callback URL for Google OAuth 2.0. This endpoint:
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
+    console.log('[AuthController] Google OAuth callback received');
     try {
       if (!req.user) {
+        console.log('[AuthController] No user data in request');
         return res.status(401).json({
           success: false,
           message: 'Authentication failed - no user data',
         });
       }
 
+      console.log('[AuthController] User data:', req.user);
       const user = req.user;
       const dbUser = await this.authService.validateUser(
         user['id'],
         user['email'],
         user['displayName'],
       );
+      console.log('[AuthController] DB User:', dbUser);
 
       req.login(dbUser, (err) => {
         if (err) {
+          console.log('[AuthController] Session login error:', err);
           return res.status(401).json({
             success: false,
             message: 'Session establishment failed',
@@ -106,6 +112,7 @@ Callback URL for Google OAuth 2.0. This endpoint:
 
         // Determine redirect URL
         const redirectUrl = process.env.SUCCESS_REDIRECT_URL || 'elenii://Onboarding';
+        console.log('[AuthController] Redirecting to:', redirectUrl);
 
         // For mobile deep links, append user data as query param
         if (redirectUrl.startsWith('elenii://')) {
@@ -114,6 +121,7 @@ Callback URL for Google OAuth 2.0. This endpoint:
             email: dbUser.email,
             displayName: dbUser.username,
           }));
+          console.log('[AuthController] Appending user data to redirect');
           return res.redirect(`${redirectUrl}?user=${userData}`);
         } else {
           // For web, redirect normally (session-based)
@@ -121,7 +129,7 @@ Callback URL for Google OAuth 2.0. This endpoint:
         }
       });
     } catch (error) {
-      console.error('OAuth callback error:', error);
+      console.error('[AuthController] OAuth callback error:', error);
       return res.status(401).json({
         success: false,
         message: 'Authentication failed',
@@ -220,6 +228,7 @@ const user = await response.json();
   })
   @Get('profile')
   async getProfile(@Req() req: Request) {
+    console.log('[AuthController] Profile request, user:', req.user);
     return req.user;
   }
 
