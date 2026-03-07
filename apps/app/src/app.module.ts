@@ -18,6 +18,7 @@ import { BlogModule } from './blog/blog.module';
 import { AccessibilityModule } from './accessibility/accessibility.module';
 import { VisionModule } from './vision/vision.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { TelehealthModule } from './telehealth/telehealth.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
     BlogModule,
     AccessibilityModule,
     VisionModule,
+    TelehealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -104,19 +104,21 @@ Callback URL for Google OAuth 2.0. This endpoint:
           });
         }
 
-        // send user data and let frontend pick redirect
-        return res.redirect(
-          process.env.SUCCESS_REDIRECT_URL || 'elenii://Onboarding',
-        );
-        // return res.json({
-        // //success: true,
-        // redirectUrl: process.env.SUCCESS_REDIRECT_URL || '/auth/success',
-        //   user: {
-        //     id: dbUser.googleId,
-        //     email: dbUser.email,
-        //     displayName: dbUser.username,
-        //   },
-        // });
+        // Determine redirect URL
+        const redirectUrl = process.env.SUCCESS_REDIRECT_URL || 'elenii://Onboarding';
+
+        // For mobile deep links, append user data as query param
+        if (redirectUrl.startsWith('elenii://')) {
+          const userData = encodeURIComponent(JSON.stringify({
+            id: dbUser.googleId,
+            email: dbUser.email,
+            displayName: dbUser.username,
+          }));
+          return res.redirect(`${redirectUrl}?user=${userData}`);
+        } else {
+          // For web, redirect normally (session-based)
+          return res.redirect(redirectUrl);
+        }
       });
     } catch (error) {
       console.error('OAuth callback error:', error);
