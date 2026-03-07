@@ -228,8 +228,14 @@ Key files (quick links):
 
 **Authentication overview**
 - The app uses Passport and `passport-google-oauth20` for Google OAuth.
+- A new `redirectUrl` query parameter may be supplied by third‑party clients
+  in order to override the server default (see `.env` for `SUCCESS_REDIRECT_URL`).
+  This is particularly useful when running the Expo mobile frontend since the
+  return URI changes per device.
 - Endpoints:
-  - `GET /auth/google` — start Google sign-in
+  - `GET /auth/google` — start Google sign-in.  Clients may append
+    `?redirectUrl=<your‑return‑uri>` when initiating the flow (used by the
+    Expo frontend and for testing).
   - `GET /auth/google/callback` — OAuth callback
   - `GET /auth/profile` — authenticated profile
   - `GET /auth/logout` — logout
