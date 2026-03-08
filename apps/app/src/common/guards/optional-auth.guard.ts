@@ -35,10 +35,10 @@ export class OptionalAuthGuard implements CanActivate {
     const userId = request.headers['x-user-id'] || request.headers['userid'];
     const sessionId =
       request.headers['x-session-id'] || request.headers['sessionid'];
-    const mobileClient = request.headers['x-mobile-client'];
+    const mobileClient = request.headers['x-mobile-client'] || request.headers['x-client-type'] === 'mobile';
 
     // Allow mobile/unauthenticated requests with proper headers
-    if (userId || sessionId || mobileClient === 'true') {
+    if (userId || sessionId || mobileClient) {
       // Create a minimal user context for unauthenticated requests
       request.user = {
         id: (userId as string) || `temp_${Date.now()}`,
