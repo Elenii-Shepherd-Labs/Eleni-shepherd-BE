@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "./node_modules/.bin/nest build app",
+    "build": "nest build app",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "node dist/apps/app/main",
     "start:dev": "nest start app --watch",
