@@ -58,11 +58,11 @@ async function bootstrap() {
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: isProduction, // Use secure cookies in production (HTTPS)
+        secure: isProduction, 
         httpOnly: true,
-        sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin in production
+        sameSite: isProduction ? 'none' : 'lax', 
         maxAge: 3600000, // 1 hour
-        domain: isProduction ? '.onrender.com' : undefined, // Allow subdomains on render if needed
+        domain: isProduction ? '.onrender.com' : undefined, 
       },
     }),
   );
