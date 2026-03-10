@@ -15,22 +15,26 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL,
       scope: ['email', 'profile'],
+      passReqToCallback: true, 
+      state: true, 
     });
   }
 
   async validate(
-    accessToken: string,
-    refreshToken: string,
-    profile: any,
-    done: VerifyCallback,
-  ): Promise<any> {
-    console.log('[GoogleStrategy] Validating user profile:', profile.displayName, profile.emails[0].value);
-    const user = {
-      id: profile.id,
-      email: profile.emails[0].value,
-      displayName: profile.displayName,
-      accessToken,
-    };
-    done(null, user);
-  }
+  req: any,          
+  accessToken: string,
+  refreshToken: string,
+  profile: any,
+  done: VerifyCallback,
+): Promise<any> {
+  console.log('[GoogleStrategy] Validating user profile:', profile.displayName, profile.emails[0].value);
+  const user = {
+    id: profile.id,
+    email: profile.emails[0].value,
+    displayName: profile.displayName,
+    accessToken,
+  };
+  done(null, user);
 }
+}
+
