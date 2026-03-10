@@ -1,8 +1,27 @@
 import { Controller, Get, Req, Res, UseGuards, HttpCode } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiCookieAuth,
+} from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
+
+const ALLOWED_REDIRECT_PREFIXES = [
+  'exp://',
+  'elenii://',
+  'http://localhost',
+  'http://127.0.0.1',
+  'http://10.',
+  'http://192.168.',
+];
+
+function isSafeRedirect(url: string | undefined): url is string {
+  if (!url) return false;
+  return ALLOWED_REDIRECT_PREFIXES.some((prefix) => url.startsWith(prefix));
+}
 
 @ApiTags('auth')
 @Controller('auth')
@@ -14,23 +33,29 @@ export class AuthController {
     description: `
 Redirects the user to Google's OAuth 2.0 login page.
 
+Pass the frontend's deep-link redirect URL as the \`state\` query param.
+Google is required by the OAuth spec to return it unchanged to the callback,
+so this is more reliable than sessions across redirect roundtrips.
+
 **Frontend Implementation**:
 \`\`\`javascript
-window.location.href = 'http://localhost:3000/auth/google';
-\`\`\`
+const redirectUrl = AuthSession.makeRedirectUri({ ... });
+const authUrl =
+  'https://eleni-shepherd-be.onrender.com/auth/google?state=' +
+  encodeURIComponent(redirectUrl);
 
-After successful authentication at Google, the user is redirected to the callback endpoint.
+WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+\`\`\`
     `,
   })
-  @ApiResponse({
-    status: 302,
-    description: 'Redirect to Google login page',
-  })
+  @ApiResponse({ status: 302, description: 'Redirect to Google login page' })
   @Get('google')
   @HttpCode(302)
   @UseGuards(AuthGuard('google'))
-  async googleAuth(@Req() req: Request) {
-    // Initiates Google OAuth authentication
+  async googleAuth() {
+    // Passport intercepts this and redirects to Google.
+    // The `state` query param is forwarded automatically when
+    // GoogleStrategy is configured with `state: true`.
   }
 
   @ApiOperation({
@@ -38,144 +63,164 @@ After successful authentication at Google, the user is redirected to the callbac
     description: `
 Callback URL for Google OAuth 2.0. This endpoint:
 1. Receives the authorization code from Google
-2. Validates/creates the user in the database
-3. Establishes a session for the user
-4. Redirects to home page
+2. Validates / creates the user in the database
+3. Establishes a session
+4. Redirects back to the frontend using the \`state\` param (mobile deep link)
+   or \`SUCCESS_REDIRECT_URL\` env var (web / fallback)
 
-**Note**: This is called automatically by Google. Frontend developers do not call this directly.
+For mobile, user data is appended as a \`user\` query param (JSON, URI-encoded).
     `,
   })
   @ApiResponse({
     status: 302,
-    description: 'Redirect to home page on success or login error page on failure',
+    description: 'Redirects to frontend with user data appended as query param',
   })
+  @ApiResponse({ status: 401, description: 'Authentication failed' })
   @Get('google/callback')
-  @HttpCode(302)
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
-    const user = req.user;
-    // Validate or create user
-    const dbUser = await this.authService.validateUser(
-      user['id'],
-      user['email'],
-      user['displayName'],
-    );
-    // Store user in session or return token
-    req.login(dbUser, (err) => {
-      if (err) {
-        return res.redirect('/login?error=true');
+    console.log('[AuthController] Google OAuth callback received');
+
+    try {
+      if (!req.user) {
+        console.error('[AuthController] No user data in request after OAuth');
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication failed — no user data',
+        });
       }
-      res.redirect('/');
-    });
+
+      const oauthUser = req.user as {
+        id: string;
+        email: string;
+        displayName: string;
+        accessToken: string;
+      };
+
+      console.log('[AuthController] OAuth user:', oauthUser.email);
+
+      const dbUser = await this.authService.validateUser(
+        oauthUser.id,
+        oauthUser.email,
+        oauthUser.displayName,
+      );
+
+      console.log('[AuthController] DB user resolved:', dbUser);
+
+      req.login(dbUser, (err) => {
+        if (err) {
+          console.error('[AuthController] Session login error:', err);
+          return res.status(401).json({
+            success: false,
+            message: 'Session establishment failed',
+          });
+        }
+
+        // --- Resolve redirect URL ---
+        // Priority: state param (mobile) → env var (web) → hardcoded fallback
+        const stateParam = req.query.state as string | undefined;
+        const envRedirect = process.env.SUCCESS_REDIRECT_URL;
+
+        const redirectUrl = isSafeRedirect(stateParam)
+          ? stateParam
+          : envRedirect || 'elenii://Onboarding';
+
+        console.log('[AuthController] Redirect resolution:', {
+          stateParam: stateParam ?? 'not set',
+          envRedirect: envRedirect ?? 'not set',
+          isSafe: isSafeRedirect(stateParam),
+          final: redirectUrl,
+        });
+
+        // --- Build final URL ---
+        // For any mobile deep link (exp:// or elenii://) append user payload
+        // so the app can hydrate immediately without an extra /profile round-trip.
+        const isMobileDeepLink =
+          redirectUrl.startsWith('exp://') ||
+          redirectUrl.startsWith('elenii://');
+
+        if (isMobileDeepLink) {
+          const userPayload = encodeURIComponent(
+            JSON.stringify({
+              id: dbUser.googleId,
+              email: dbUser.email,
+              displayName: dbUser.username,
+            }),
+          );
+          const finalUrl = `${redirectUrl}?user=${userPayload}`;
+          console.log('[AuthController] Mobile redirect →', finalUrl);
+          return res.redirect(finalUrl);
+        }
+
+        // Web redirect — session cookie handles auth, no payload needed
+        console.log('[AuthController] Web redirect →', redirectUrl);
+        return res.redirect(redirectUrl);
+      });
+    } catch (error) {
+      console.error('[AuthController] Unhandled OAuth callback error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error during authentication',
+      });
+    }
   }
 
+  @ApiOperation({ summary: 'Authentication success page' })
+  @ApiResponse({ status: 200, description: 'Success message' })
+  @Get('success')
+  async success(@Req() req: Request) {
+    return { message: 'Authentication successful', user: req.user };
+  }
+
+  @ApiOperation({ summary: 'Authentication error page' })
+  @ApiResponse({ status: 200, description: 'Error message' })
+  @Get('error')
+  async error() {
+    return { message: 'Authentication failed' };
+  }
+
+  @ApiCookieAuth('sessionId')
   @ApiOperation({
     summary: 'Get authenticated user profile',
     description: `
 Returns the profile of the currently authenticated user.
 
-**Authentication**: Required (via session cookie)
-
 **Frontend Implementation**:
 \`\`\`typescript
-const response = await fetch('http://localhost:3000/auth/profile', {
-  credentials: 'include', // Important: include session cookie
+const response = await fetch('https://eleni-shepherd-be.onrender.com/auth/profile', {
+  credentials: 'include',
 });
 const user = await response.json();
 \`\`\`
-
-**Response Data Structure**:
-\`\`\`json
-{
-  "id": "google-id-123",
-  "email": "user@example.com",
-  "displayName": "John Doe",
-  "photos": [
-    {
-      "value": "https://lh3.googleusercontent.com/..."
-    }
-  ]
-}
-\`\`\`
     `,
   })
-  @ApiResponse({
-    status: 200,
-    description: 'User profile retrieved successfully',
-    schema: {
-      properties: {
-        id: { type: 'string', example: 'google-id-123' },
-        email: { type: 'string', example: 'user@example.com' },
-        displayName: { type: 'string', example: 'John Doe' },
-        photos: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              value: { type: 'string', description: 'Profile photo URL' },
-            },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'User not authenticated. Redirect to /auth/google',
-  })
+  @ApiResponse({ status: 200, description: 'User profile retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Not authenticated' })
   @Get('profile')
   async getProfile(@Req() req: Request) {
+    console.log('[AuthController] Profile request, user:', req.user);
+    if (!req.user) {
+      return { success: false, message: 'Unauthorized' };
+    }
     return req.user;
   }
 
+  @ApiCookieAuth('sessionId')
   @ApiOperation({
     summary: 'Logout user',
-    description: `
-Destroys the current user session and logs them out.
-
-**Authentication**: Required (via session cookie)
-
-**Frontend Implementation**:
-\`\`\`javascript
-// Option 1: Simple redirect
-window.location.href = 'http://localhost:3000/auth/logout';
-
-// Option 2: Fetch with redirect
-const response = await fetch('http://localhost:3000/auth/logout', {
-  credentials: 'include',
-});
-// After logout, redirect to login
-window.location.href = '/login';
-\`\`\`
-
-**Post-Logout**: User must re-authenticate by visiting /auth/google.
-    `,
+    description: 'Destroys the current session and logs the user out.',
   })
-  @ApiResponse({
-    status: 200,
-    description: 'User logged out successfully',
-    schema: {
-      properties: {
-        message: { type: 'string', example: 'Logged out successfully' },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Logout failed (rare)',
-    schema: {
-      properties: {
-        message: { type: 'string', example: 'Logout failed' },
-      },
-    },
-  })
+  @ApiResponse({ status: 200, description: 'Logged out successfully' })
+  @ApiResponse({ status: 500, description: 'Logout failed' })
   @Get('logout')
   async logout(@Req() req: Request, @Res() res: Response) {
     req.logout((err) => {
       if (err) {
+        console.error('[AuthController] Logout error:', err);
         return res.status(500).json({ message: 'Logout failed' });
       }
-      res.json({ message: 'Logged out successfully' });
+      console.log('[AuthController] User logged out');
+      return res.json({ message: 'Logged out successfully' });
     });
   }
 }

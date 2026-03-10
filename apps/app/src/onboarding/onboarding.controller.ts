@@ -31,7 +31,7 @@ import {
 import { OptionalAuthGuard } from '../common/guards/optional-auth.guard';
 
 @ApiTags('Onboarding')
-@UseGuards(OptionalAuthGuard)
+//@UseGuards(OptionalAuthGuard)
 @Controller('onboard')
 export class OnboardingController {
   constructor(

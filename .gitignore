@@ -42,3 +42,6 @@ CODEBASE_QUICK_REFERENCE.md
 SWAGGER_GUIDE.md
 API_DOCUMENTATION.md
 WORKFLOW.md
+
+# Python Virtual Environment
+.venv

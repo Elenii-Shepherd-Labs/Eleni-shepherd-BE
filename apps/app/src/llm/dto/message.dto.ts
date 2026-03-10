@@ -1,4 +1,10 @@
-import { IsString, IsEnum, IsOptional, IsNumber, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsEnum,
+  IsOptional,
+  IsNumber,
+  IsArray,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class Message {

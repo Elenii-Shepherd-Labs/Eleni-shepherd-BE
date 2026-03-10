@@ -27,7 +27,11 @@ export class TextToSpeechService {
     }
   }
 
-  async generateSpeech(text: string, voice?: string, speed?: number): Promise<IAppResponse> {
+  async generateSpeech(
+    text: string,
+    voice?: string,
+    speed?: number,
+  ): Promise<IAppResponse> {
     try {
       let buffer: Buffer;
       if (this.elevenLabsApiKey) {
@@ -67,10 +71,15 @@ export class TextToSpeechService {
     }
   }
 
-  private async generateOpenAISpeech(text: string, voice?: string): Promise<Buffer> {
+  private async generateOpenAISpeech(
+    text: string,
+    voice?: string,
+  ): Promise<Buffer> {
     let selectedVoice = (voice as any) || 'alloy';
     if (selectedVoice === 'nigerian') {
-      selectedVoice = this.configService.get<string>('OPENAI_NIGERIAN_VOICE') || selectedVoice;
+      selectedVoice =
+        this.configService.get<string>('OPENAI_NIGERIAN_VOICE') ||
+        selectedVoice;
     }
     const mp3 = await this.openai!.audio.speech.create({
       model: 'tts-1',
@@ -81,7 +90,7 @@ export class TextToSpeechService {
 
     const buffer = Buffer.from(await mp3.arrayBuffer());
     this.logger.log(`Generated ${buffer.length} bytes of audio`);
-    
+
     return buffer;
   }
 
@@ -90,10 +99,10 @@ export class TextToSpeechService {
     voice?: string,
   ): AsyncGenerator<Buffer> {
     const audio = await this.generateOpenAISpeech(text, voice);
-    
+
     // Split into chunks for streaming
     const chunkSize = 4096;
-    
+
     for (let i = 0; i < audio.length; i += chunkSize) {
       yield audio.slice(i, i + chunkSize);
     }
@@ -103,9 +112,13 @@ export class TextToSpeechService {
     text: string,
     voiceId?: string,
   ): Promise<Buffer> {
-    let voice = voiceId || this.configService.get<string>('ELEVENLABS_VOICE_ID') || 'EXAVITQu4vr4xnSDxMaL';
+    let voice =
+      voiceId ||
+      this.configService.get<string>('ELEVENLABS_VOICE_ID') ||
+      'EXAVITQu4vr4xnSDxMaL';
     if (voice === 'nigerian') {
-      voice = this.configService.get<string>('ELEVENLABS_NIGERIAN_VOICE_ID') || voice;
+      voice =
+        this.configService.get<string>('ELEVENLABS_NIGERIAN_VOICE_ID') || voice;
     }
 
     const response = await axios.post(
@@ -120,7 +133,7 @@ export class TextToSpeechService {
       },
       {
         headers: {
-          'Accept': 'audio/mpeg',
+          Accept: 'audio/mpeg',
           'xi-api-key': this.elevenLabsApiKey!,
           'Content-Type': 'application/json',
         },
@@ -129,8 +142,10 @@ export class TextToSpeechService {
     );
 
     const buffer = Buffer.from(response.data);
-    this.logger.log(`Generated ${buffer.length} bytes of audio with ElevenLabs`);
-    
+    this.logger.log(
+      `Generated ${buffer.length} bytes of audio with ElevenLabs`,
+    );
+
     return buffer;
   }
 
@@ -138,7 +153,10 @@ export class TextToSpeechService {
     text: string,
     voiceId?: string,
   ): AsyncGenerator<Buffer> {
-    const voice = voiceId || this.configService.get<string>('ELEVENLABS_VOICE_ID') || 'EXAVITQu4vr4xnSDxMaL';
+    const voice =
+      voiceId ||
+      this.configService.get<string>('ELEVENLABS_VOICE_ID') ||
+      'EXAVITQu4vr4xnSDxMaL';
 
     try {
       const response = await axios.post(
@@ -153,7 +171,7 @@ export class TextToSpeechService {
         },
         {
           headers: {
-            'Accept': 'audio/mpeg',
+            Accept: 'audio/mpeg',
             'xi-api-key': this.elevenLabsApiKey!,
             'Content-Type': 'application/json',
           },
@@ -172,11 +190,11 @@ export class TextToSpeechService {
 
   private generateMockAudio(text: string): Buffer {
     this.logger.warn('Generating mock audio - no API keys configured');
-    
+
     const sampleRate = 16000;
     const duration = Math.min(text.length * 0.05, 5);
     const numSamples = Math.floor(sampleRate * duration);
-    
+
     return Buffer.alloc(numSamples * 2);
   }
 
@@ -185,11 +203,25 @@ export class TextToSpeechService {
    * @param buffer input mp3 buffer
    * @param speed multiplier (0.5-2.0)
    */
-  private async adjustAudioSpeed(buffer: Buffer, speed: number): Promise<Buffer> {
+  private async adjustAudioSpeed(
+    buffer: Buffer,
+    speed: number,
+  ): Promise<Buffer> {
     const clamped = Math.max(0.5, Math.min(2.0, speed));
     return new Promise<Buffer>((resolve, reject) => {
       try {
-        const ff = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', 'pipe:0', '-filter:a', `atempo=${clamped}`, '-f', 'mp3', 'pipe:1']);
+        const ff = spawn('ffmpeg', [
+          '-hide_banner',
+          '-loglevel',
+          'error',
+          '-i',
+          'pipe:0',
+          '-filter:a',
+          `atempo=${clamped}`,
+          '-f',
+          'mp3',
+          'pipe:1',
+        ]);
 
         const chunks: Buffer[] = [];
         ff.stdout.on('data', (c: Buffer) => chunks.push(c));
@@ -211,12 +243,12 @@ export class TextToSpeechService {
   /**
    * Split text into chunks for streaming
    */
-  splitTextForStreaming(text: string, maxChunkLength: number = 200): string[] {
+  splitTextForStreaming(text: string, maxChunkLength = 200): string[] {
     const chunks: string[] = [];
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    
+
     let currentChunk = '';
-    
+
     for (const sentence of sentences) {
       if (currentChunk.length + sentence.length <= maxChunkLength) {
         currentChunk += sentence;
@@ -227,11 +259,11 @@ export class TextToSpeechService {
         currentChunk = sentence;
       }
     }
-    
+
     if (currentChunk) {
       chunks.push(currentChunk.trim());
     }
-    
+
     return chunks;
   }
 }

@@ -69,7 +69,9 @@ const getAppConfig = () => ({
     serviceUrl: process.env.VISION_SERVICE_URL || 'http://localhost:5000',
   },
   radioBrowser: {
-    baseUrl: process.env.RADIO_BROWSER_BASE_URL || 'https://de1.api.radio-browser.info',
+    baseUrl:
+      process.env.RADIO_BROWSER_BASE_URL ||
+      'https://de1.api.radio-browser.info',
   },
 });
 
@@ -86,7 +88,9 @@ export const configuration = () => {
       serviceUrl: process.env.VISION_SERVICE_URL || 'http://localhost:5000',
     },
     radioBrowser: {
-      baseUrl: process.env.RADIO_BROWSER_BASE_URL || 'https://de1.api.radio-browser.info',
+      baseUrl:
+        process.env.RADIO_BROWSER_BASE_URL ||
+        'https://de1.api.radio-browser.info',
     },
     redis: {
       host: process.env.REDIS_HOST || '127.0.0.1',

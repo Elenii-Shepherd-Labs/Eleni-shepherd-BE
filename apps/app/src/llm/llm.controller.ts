@@ -1,10 +1,5 @@
 import { Controller, Post, Body, Res } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBody,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { LlmService } from './llm.service';
 import { Response } from 'express';
 import { GenerateResponseDto } from './dto';
@@ -190,7 +185,10 @@ This endpoint is for single-turn requests or manual state management.
     status: 500,
     description: 'Server error or API provider error',
   })
-  async generateResponse(@Body() generateResponseDto: GenerateResponseDto, @Res() res: Response) {
+  async generateResponse(
+    @Body() generateResponseDto: GenerateResponseDto,
+    @Res() res: Response,
+  ) {
     const resp = await this.llmService.generateResponse(
       generateResponseDto.messages,
       generateResponseDto.context,
@@ -251,7 +249,10 @@ For bidirectional real-time communication, use Conversational AI WebSocket gatew
     schema: {
       properties: {
         success: { type: 'boolean', example: true },
-        message: { type: 'string', example: 'Streaming endpoint for future WebSocket integration' },
+        message: {
+          type: 'string',
+          example: 'Streaming endpoint for future WebSocket integration',
+        },
         data: {
           type: 'object',
           properties: {
@@ -270,6 +271,9 @@ For bidirectional real-time communication, use Conversational AI WebSocket gatew
       generateResponseDto.messages,
       generateResponseDto.context,
     );
-    return res.status(resp.status || 200).json({ ...resp, message: 'Streaming endpoint for future WebSocket integration' });
+    return res.status(resp.status || 200).json({
+      ...resp,
+      message: 'Streaming endpoint for future WebSocket integration',
+    });
   }
 }

@@ -18,10 +18,15 @@ import { BlogModule } from './blog/blog.module';
 import { AccessibilityModule } from './accessibility/accessibility.module';
 import { VisionModule } from './vision/vision.module';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { TelehealthModule } from './telehealth/telehealth.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env', load: [configuration] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+      load: [configuration],
+    }),
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],
@@ -46,6 +51,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
     BlogModule,
     AccessibilityModule,
     VisionModule,
+    TelehealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

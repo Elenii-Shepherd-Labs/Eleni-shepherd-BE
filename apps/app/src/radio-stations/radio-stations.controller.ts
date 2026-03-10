@@ -1,10 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { RadioStationsService } from './radio-stations.service';
 
 @ApiTags('Radio Stations')
@@ -67,8 +62,14 @@ audio.play();
           items: {
             type: 'object',
             properties: {
-              stationName: { type: 'string', example: 'Afrobeats Gospel Radio' },
-              streamUrl: { type: 'string', example: 'https://stream.zeno.fm/...' },
+              stationName: {
+                type: 'string',
+                example: 'Afrobeats Gospel Radio',
+              },
+              streamUrl: {
+                type: 'string',
+                example: 'https://stream.zeno.fm/...',
+              },
               tags: { type: 'string', example: 'gospel, afrobeats' },
               bitrate: { type: 'number', example: 128 },
               favicon: { type: 'string', description: 'Logo URL' },

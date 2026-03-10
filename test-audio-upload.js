@@ -25,7 +25,7 @@ if (!inputFile) {
   process.exit(1);
 }
 
-const apiBaseUrl = 'http://localhost:3000';
+const apiBaseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
 async function run() {
   try {

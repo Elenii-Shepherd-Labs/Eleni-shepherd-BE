@@ -1,4 +1,11 @@
-import { Controller, Post, Body, Res, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -79,7 +86,10 @@ audio.play();
     }
     const buf = resp.data as Buffer;
     response.setHeader('Content-Type', 'audio/mpeg');
-    response.setHeader('Content-Disposition', 'attachment; filename="read-aloud.mp3"');
+    response.setHeader(
+      'Content-Disposition',
+      'attachment; filename="read-aloud.mp3"',
+    );
     response.setHeader('Content-Length', buf.length);
     return response.status(200).send(buf);
   }
@@ -93,12 +103,22 @@ One-step flow for visually impaired users.
     `,
   })
   @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
   @UseInterceptors(FileInterceptor('image'))
   @ApiResponse({ status: 200, description: 'MP3 audio of extracted text' })
-  async readImageAloud(@UploadedFile() file: Express.Multer.File, @Res() res: any) {
+  async readImageAloud(
+    @UploadedFile() file: Express.Multer.File,
+    @Res() res: any,
+  ) {
     if (!file?.buffer) {
-      return res.status(400).json({ success: false, message: 'image file required' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'image file required' });
     }
     const text = await this.visionService.extractText(file.buffer);
     const toRead = text || 'No text could be extracted from this image.';
@@ -108,7 +128,10 @@ One-step flow for visually impaired users.
     }
     const buf = resp.data as Buffer;
     res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Disposition', 'attachment; filename="read-image.mp3"');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="read-image.mp3"',
+    );
     res.setHeader('Content-Length', buf.length);
     return res.status(200).send(buf);
   }
@@ -116,15 +139,26 @@ One-step flow for visually impaired users.
   @Post('navigate-and-speak')
   @ApiOperation({
     summary: 'Obstacle detection + TTS: speak navigation hints aloud',
-    description: 'Capture image -> detect obstacles -> speak hints (e.g. "Chair in path")',
+    description:
+      'Capture image -> detect obstacles -> speak hints (e.g. "Chair in path")',
   })
   @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', properties: { image: { type: 'string', format: 'binary' } } } })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
   @UseInterceptors(FileInterceptor('image'))
   @ApiResponse({ status: 200, description: 'MP3 audio of navigation hints' })
-  async navigateAndSpeak(@UploadedFile() file: Express.Multer.File, @Res() res: any) {
+  async navigateAndSpeak(
+    @UploadedFile() file: Express.Multer.File,
+    @Res() res: any,
+  ) {
     if (!file?.buffer) {
-      return res.status(400).json({ success: false, message: 'image file required' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'image file required' });
     }
     const { speech } = await this.visionService.getNavigationHints(file.buffer);
     const resp = await this.ttsService.generateSpeech(speech, 'nova');

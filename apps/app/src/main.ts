@@ -18,17 +18,20 @@ async function bootstrap() {
         'http://localhost:3001',
         'http://localhost:19000', // Expo dev client
         'http://localhost:19001',
-        /^http:\/\/192\.168\.\d+\.\d+:3000/, // Local network IP
-        /^http:\/\/192\.168\.\d+\.\d+:3001/,
+        /^http:\/\/192\.168\.\d+\.\d+:\d+/, // Local network IP (any port)
+        /^http:\/\/10\.\d+\.\d+\.\d+:\d+/, // Android emulator/10.x.x.x IPs
         'https://eleni-shepherd-be.onrender.com', // Render deployment
         'capacitor://',
         'ionic://',
       ];
 
-      if (!origin || allowedOrigins.some(allowed => {
-        if (allowed instanceof RegExp) return allowed.test(origin);
-        return origin === allowed;
-      })) {
+      if (
+        !origin ||
+        allowedOrigins.some((allowed) => {
+          if (allowed instanceof RegExp) return allowed.test(origin);
+          return origin === allowed;
+        })
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -36,17 +39,31 @@ async function bootstrap() {
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-ID', 'x-session-id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Session-ID',
+      'x-session-id',
+    ],
   });
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
+  const isProduction = process.env.NODE_ENV === 'production';
+  console.log(`[Main] Environment: NODE_ENV=${process.env.NODE_ENV}, isProduction=${isProduction}`);
+  
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'your-secret-key',
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: false, maxAge: 3600000 },
+      cookie: {
+        secure: isProduction, 
+        httpOnly: true,
+        sameSite: isProduction ? 'none' : 'lax', 
+        maxAge: 3600000, // 1 hour
+        domain: isProduction ? '.onrender.com' : undefined, 
+      },
     }),
   );
 
@@ -119,17 +136,45 @@ All API responses follow a standardized format:
     //   'https://opensource.org/licenses/MIT',
     // )
     .addTag('auth', 'User authentication and profile management')
-    .addTag('Audio Processing', 'Real-time audio chunk processing with transcription')
-    .addTag('Speech-to-Text', 'Audio transcription and voice activity detection')
+    .addTag(
+      'Audio Processing',
+      'Real-time audio chunk processing with transcription',
+    )
+    .addTag(
+      'Speech-to-Text',
+      'Audio transcription and voice activity detection',
+    )
     .addTag('Text-to-Speech', 'Text to speech synthesis with voice selection')
     .addTag('LLM', 'Large Language Model integration for AI responses')
-    .addTag('Conversational AI', 'Multi-turn conversation sessions with context')
+    .addTag(
+      'Conversational AI',
+      'Multi-turn conversation sessions with context',
+    )
     .addTag('Onboarding', 'User onboarding and profile setup')
-    .addTag('Radio Stations', 'Live radio stations from Radio Browser API (Nigeria)')
-    .addTag('Blog & News', 'Recent news, entertainment, sports, and blog articles')
-    .addTag('Accessibility (Screen Reader)', 'Read-aloud TTS for visually impaired users')
-    .addTag('Vision (Object Detection)', 'YOLO object detection and ESP32-CAM image processing')
-    .addTag('Subscription & Languages', 'Subscription tiers and allowed languages (free: English, subscribed: all)')
+    .addTag(
+      'Radio Stations',
+      'Live radio stations from Radio Browser API (Nigeria)',
+    )
+    .addTag(
+      'Blog & News',
+      'Recent news, entertainment, sports, and blog articles',
+    )
+    .addTag(
+      'Accessibility (Screen Reader)',
+      'Read-aloud TTS for visually impaired users',
+    )
+    .addTag(
+      'Vision (Object Detection)',
+      'YOLO object detection and ESP32-CAM image processing',
+    )
+    .addTag(
+      'Subscription & Languages',
+      'Subscription tiers and allowed languages (free: English, subscribed: all)',
+    )
+    .addTag(
+      'Telehealth',
+      'Health Assistant: daily reminders (medications/appointments), AI symptom checker, and medical document OCR analysis',
+    )
     .addCookieAuth('sessionId')
     .addServer('http://localhost:3000', 'Local Development')
     // .addServer('https://api.example.com', 'Production')

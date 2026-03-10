@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: eleni-shepherd-be
+    env: node
+    plan: free
+    buildCommand: npm ci --production=false && npm run build
+    startCommand: node dist/apps/app/main
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=512

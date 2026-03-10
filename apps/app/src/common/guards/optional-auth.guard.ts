@@ -10,12 +10,12 @@ import { Request } from 'express';
 
 /**
  * Optional Auth Guard - Allows both authenticated and unauthenticated requests
- * 
+ *
  * Use Cases:
  * - Onboarding endpoints that should work for new/unauthenticated users
  * - Public API endpoints that optionally use user context
  * - Mobile apps that don't use traditional OAuth flow
- * 
+ *
  * For Onboarding:
  * - If user is authenticated via Google OAuth: uses req.user
  * - If user is not authenticated: creates a temporary session/user context from request headers
@@ -33,14 +33,15 @@ export class OptionalAuthGuard implements CanActivate {
 
     // Check for mobile client headers (userId or sessionId)
     const userId = request.headers['x-user-id'] || request.headers['userid'];
-    const sessionId = request.headers['x-session-id'] || request.headers['sessionid'];
-    const mobileClient = request.headers['x-mobile-client'];
+    const sessionId =
+      request.headers['x-session-id'] || request.headers['sessionid'];
+    const mobileClient = request.headers['x-mobile-client'] || request.headers['x-client-type'] === 'mobile';
 
     // Allow mobile/unauthenticated requests with proper headers
-    if (userId || sessionId || mobileClient === 'true') {
+    if (userId || sessionId || mobileClient) {
       // Create a minimal user context for unauthenticated requests
       request.user = {
-        id: userId as string || `temp_${Date.now()}`,
+        id: (userId as string) || `temp_${Date.now()}`,
         isTemporary: !userId,
       } as any;
       return true;

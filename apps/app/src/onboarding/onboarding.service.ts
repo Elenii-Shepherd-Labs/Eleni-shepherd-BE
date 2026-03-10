@@ -9,7 +9,11 @@ import { createAppResponse } from '@app/common/utils/response';
 @Injectable()
 export class OnboardingService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
-  async saveName(userId: string, name: string, nameType: string): Promise<IAppResponse> {
+  async saveName(
+    userId: string,
+    name: string,
+    nameType: string,
+  ): Promise<IAppResponse> {
     const user = await this.userModel.findById(userId);
 
     if (!user) {
@@ -22,7 +26,10 @@ export class OnboardingService {
     return createAppResponse(true, 'Name saved', user.fullname, 201);
   }
 
-  async saveFullname(userId: string, fullname: SaveFullNameDto): Promise<IAppResponse> {
+  async saveFullname(
+    userId: string,
+    fullname: SaveFullNameDto,
+  ): Promise<IAppResponse> {
     const user = await this.userModel.findByIdAndUpdate(
       userId,
       {
