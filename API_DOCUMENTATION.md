@@ -701,9 +701,108 @@ export function ChatComponent() {
 
 ---
 
+## Telehealth (`/telehealth`)
+
+The Health Assistant module — daily health reminders, AI symptom guidance, and medical document OCR analysis.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/telehealth/reminders` | POST | Create a health reminder |
+| `/telehealth/reminders/:userId` | GET | Get all reminders for a user |
+| `/telehealth/reminders/detail/:id` | GET | Get a single reminder |
+| `/telehealth/reminders/:id` | PATCH | Update a reminder |
+| `/telehealth/reminders/:id` | DELETE | Soft-delete a reminder |
+| `/telehealth/symptom-check` | POST | AI symptom guidance |
+| `/telehealth/analyze-document` | POST | Upload image for OCR + AI analysis |
+
+### Reminder Types
+- `medication` — e.g. "Malaria Prophylaxis"
+- `appointment` — e.g. "General Hospital Visit"
+- `other` — free-form / voice-dictated reminders
+
+### Pattern: Manage Daily Reminders
+
+```typescript
+// 1. Create a reminder
+const createResp = await fetch('http://localhost:3000/telehealth/reminders', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    userId: 'user-123',
+    title: 'Malaria Prophylaxis',
+    type: 'medication',
+    time: '14:00',
+    notes: 'Take with food',
+  }),
+  credentials: 'include',
+});
+const created = await createResp.json();
+const reminderId = created.data._id;
+
+// 2. List all reminders for user
+const listResp = await fetch('http://localhost:3000/telehealth/reminders/user-123', {
+  credentials: 'include',
+});
+const reminders = await listResp.json();
+// reminders.data → sorted array by time
+
+// 3. Delete a reminder (tap trash icon in UI)
+await fetch(`http://localhost:3000/telehealth/reminders/${reminderId}`, {
+  method: 'DELETE',
+  credentials: 'include',
+});
+```
+
+### Pattern: Symptom Checker
+
+```typescript
+// Send transcribed speech or typed symptoms
+const resp = await fetch('http://localhost:3000/telehealth/symptom-check', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    symptoms: 'I have had a headache and fever for 3 days with mild chest pain.',
+    userId: 'user-123',
+  }),
+  credentials: 'include',
+});
+const result = await resp.json();
+
+// Pass guidance to TTS for audio playback
+const guidance = result.data.guidance; // AI health advice
+```
+
+### Pattern: Document Analysis (React Native)
+
+```typescript
+import * as ImagePicker from 'expo-image-picker';
+
+const analyseDocument = async () => {
+  const result = await ImagePicker.launchCameraAsync({ base64: false });
+  if (!result.canceled) {
+    const formData = new FormData();
+    formData.append('document', {
+      uri: result.assets[0].uri,
+      name: 'document.jpg',
+      type: 'image/jpeg',
+    } as any);
+
+    const response = await fetch('http://localhost:3000/telehealth/analyze-document', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+    const data = await response.json();
+    // data.data.analysis → full AI analysis of the document
+  }
+};
+```
+
+---
+
 ## Additional Resources
 
-- **Swagger UI**: http://localhost:3000/api/docs
+- **Swagger UI**: http://localhost:3000/api
 - **OpenAPI Specification**: http://localhost:3000/api-json
 - **GitHub Issues**: Report bugs and feature requests
 - **Slack Channel**: #eleni-shepherd-dev for questions

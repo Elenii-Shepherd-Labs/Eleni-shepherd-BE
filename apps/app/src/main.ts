@@ -162,6 +162,10 @@ All API responses follow a standardized format:
       'Subscription & Languages',
       'Subscription tiers and allowed languages (free: English, subscribed: all)',
     )
+    .addTag(
+      'Telehealth',
+      'Health Assistant: daily reminders (medications/appointments), AI symptom checker, and medical document OCR analysis',
+    )
     .addCookieAuth('sessionId')
     .addServer('http://localhost:3000', 'Local Development')
     // .addServer('https://api.example.com', 'Production')
