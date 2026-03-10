@@ -49,7 +49,9 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  const isProduction = config.get('app.env') === 'production';
+  const isProduction = process.env.NODE_ENV === 'production';
+  console.log(`[Main] Environment: NODE_ENV=${process.env.NODE_ENV}, isProduction=${isProduction}`);
+  
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'your-secret-key',
@@ -60,6 +62,7 @@ async function bootstrap() {
         httpOnly: true,
         sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin in production
         maxAge: 3600000, // 1 hour
+        domain: isProduction ? '.onrender.com' : undefined, // Allow subdomains on render if needed
       },
     }),
   );
