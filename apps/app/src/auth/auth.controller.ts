@@ -118,12 +118,18 @@ Callback URL for Google OAuth 2.0. This endpoint:
         }
 
         // Determine redirect URL
-        // allow override via session (set in /auth/google)
+        // Priority: session redirectUrl → env SUCCESS_REDIRECT_URL → default
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sessionRedirect = (req.session as any)?.redirectUrl as string | undefined;
-        const redirectUrl =
-          sessionRedirect || process.env.SUCCESS_REDIRECT_URL || 'elenii://Onboarding';
-        console.log('[AuthController] Redirecting to:', redirectUrl, '(session override:', sessionRedirect, ')');
+        const envRedirect = process.env.SUCCESS_REDIRECT_URL;
+        const redirectUrl = sessionRedirect || envRedirect || 'elenii://Onboarding';
+        
+        console.log('[AuthController] Redirect URL resolution:', {
+          sessionRedirect: sessionRedirect ? 'set' : 'not set',
+          envRedirect: envRedirect ? 'set' : 'not set',
+          final: redirectUrl,
+          sessionId: req.sessionID,
+        });
 
         // For mobile deep links, append user data as query param
         if (redirectUrl.startsWith('elenii://') || redirectUrl.startsWith('exp://')) {
@@ -132,10 +138,11 @@ Callback URL for Google OAuth 2.0. This endpoint:
             email: dbUser.email,
             displayName: dbUser.username,
           }));
-          console.log('[AuthController] Appending user data to redirect');
+          console.log('[AuthController] Appending user data to redirect:', redirectUrl);
           return res.redirect(`${redirectUrl}?user=${userData}`);
         } else {
           // For web, redirect normally (session-based)
+          console.log('[AuthController] Web redirect to:', redirectUrl);
           return res.redirect(redirectUrl);
         }
       });

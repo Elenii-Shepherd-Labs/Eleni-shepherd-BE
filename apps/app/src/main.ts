@@ -18,8 +18,8 @@ async function bootstrap() {
         'http://localhost:3001',
         'http://localhost:19000', // Expo dev client
         'http://localhost:19001',
-        /^http:\/\/192\.168\.\d+\.\d+:3000/, // Local network IP
-        /^http:\/\/192\.168\.\d+\.\d+:3001/,
+        /^http:\/\/192\.168\.\d+\.\d+:\d+/, // Local network IP (any port)
+        /^http:\/\/10\.\d+\.\d+\.\d+:\d+/, // Android emulator/10.x.x.x IPs
         'https://eleni-shepherd-be.onrender.com', // Render deployment
         'capacitor://',
         'ionic://',
@@ -49,12 +49,18 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
+  const isProduction = config.get('app.env') === 'production';
   app.use(
     session({
       secret: process.env.SESSION_SECRET || 'your-secret-key',
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: false, maxAge: 3600000 },
+      cookie: {
+        secure: isProduction, // Use secure cookies in production (HTTPS)
+        httpOnly: true,
+        sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin in production
+        maxAge: 3600000, // 1 hour
+      },
     }),
   );
 
