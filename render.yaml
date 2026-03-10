@@ -3,7 +3,7 @@ services:
     name: eleni-shepherd-be
     env: node
     plan: free
-    buildCommand: npm ci --production=false && npm run build
+    buildCommand: unset NODE_ENV && npm ci --production=false && npm run build
     startCommand: node dist/apps/app/main
     envVars:
       - key: NODE_ENV
