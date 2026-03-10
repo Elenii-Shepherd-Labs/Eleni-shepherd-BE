@@ -62,7 +62,8 @@ async function bootstrap() {
         httpOnly: true,
         sameSite: isProduction ? 'none' : 'lax', 
         maxAge: 3600000, // 1 hour
-        domain: isProduction ? '.onrender.com' : undefined, 
+        // Remove domain restriction to allow cookies on the exact domain
+        // domain: isProduction ? '.onrender.com' : undefined, 
       },
     }),
   );
