@@ -5,10 +5,73 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import passport from 'passport';
 import session from 'express-session';
+import Redis from 'ioredis';
+import { RedisSessionStore } from './auth/redis-session.store';
+
+const createSessionStore = async (config: ConfigService) => {
+  const environment = config.get<string>('app.environment') || 'development';
+  const isProduction = environment === 'production';
+  const sessionTtlSeconds =
+    config.get<number>('session.ttlSeconds') || 3600;
+  const sessionPrefix =
+    config.get<string>('session.redisPrefix') || 'sess:';
+  const sessionRedisConnectTimeoutMs =
+    config.get<number>('session.redisConnectTimeoutMs') || 1500;
+  const allowMemoryFallback =
+    config.get<boolean>('session.allowMemoryFallback') ?? !isProduction;
+
+  const redis = new Redis({
+    host: config.get<string>('redis.host') || '127.0.0.1',
+    port: config.get<number>('redis.port') || 6379,
+    password: config.get<string>('redis.password') || undefined,
+    lazyConnect: true,
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: 1,
+    connectTimeout: sessionRedisConnectTimeoutMs,
+  });
+
+  try {
+    await redis.connect();
+    await redis.ping();
+    console.log(
+      `[Main] Redis session store connected at ${config.get<string>('redis.host') || '127.0.0.1'}:${config.get<number>('redis.port') || 6379}`,
+    );
+
+    return {
+      store: new RedisSessionStore(redis, {
+        prefix: sessionPrefix,
+        defaultTtlSeconds: sessionTtlSeconds,
+      }),
+      redisClient: redis,
+      usesRedis: true,
+    };
+  } catch (error) {
+    redis.disconnect();
+
+    if (!allowMemoryFallback || isProduction) {
+      throw error;
+    }
+
+    console.warn(
+      '[Main] Redis unavailable, falling back to in-memory sessions for local development.',
+      error,
+    );
+
+    return {
+      store: undefined,
+      redisClient: null,
+      usesRedis: false,
+    };
+  }
+};
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
+  const { store, redisClient, usesRedis } = await createSessionStore(config);
+  const sessionMaxAgeMs =
+    config.get<number>('session.maxAgeMs') ||
+    (config.get<number>('session.ttlSeconds') || 3600) * 1000;
 
   // Enhanced CORS configuration for mobile and web clients
   app.enableCors({
@@ -49,21 +112,27 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  const isProduction = process.env.NODE_ENV === 'production';
-  console.log(`[Main] Environment: NODE_ENV=${process.env.NODE_ENV}, isProduction=${isProduction}`);
-  
+  const environment = config.get<string>('app.environment') || 'development';
+  const isProduction = environment === 'production';
+  console.log(
+    `[Main] Environment: NODE_ENV=${environment}, isProduction=${isProduction}, sessionStore=${usesRedis ? 'redis' : 'memory'}`,
+  );
+  app.enableShutdownHooks();
+
   app.use(
     session({
-      secret: process.env.SESSION_SECRET || 'your-secret-key',
+      name: 'sessionId',
+      ...(store ? { store } : {}),
+      secret: config.get<string>('session.secret') || 'your-secret-key',
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: isProduction, 
+        secure: isProduction,
         httpOnly: true,
-        sameSite: isProduction ? 'none' : 'lax', 
-        maxAge: 3600000, // 1 hour
+        sameSite: isProduction ? 'none' : 'lax',
+        maxAge: sessionMaxAgeMs,
         // Remove domain restriction to allow cookies on the exact domain
-        // domain: isProduction ? '.onrender.com' : undefined, 
+        // domain: isProduction ? '.onrender.com' : undefined,
       },
     }),
   );
@@ -194,6 +263,9 @@ All API responses follow a standardized format:
   const port = config.get('app.port') || 3000;
   // Explicitly bind to 0.0.0.0 so emulators and devices can reach the server
   await app.listen(port, '0.0.0.0');
+  if (usesRedis && redisClient) {
+    app.getHttpServer().on('close', () => redisClient.disconnect());
+  }
   // eslint-disable-next-line no-console
   console.log(`Server listening on ${await app.getUrl()}`);
 }

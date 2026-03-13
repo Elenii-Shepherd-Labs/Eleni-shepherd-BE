@@ -1,4 +1,17 @@
-import * as bcrypt from 'bcrypt';
+import { randomBytes, scrypt as scryptCallback } from 'crypto';
+
+const scrypt = (password: string, salt: string) =>
+  new Promise<Buffer>((resolve, reject) => {
+    scryptCallback(password, salt, 64, (error, derivedKey) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve(derivedKey as Buffer);
+    });
+  });
+
 export class Utils {
   static isEmail(email: string): boolean {
     const reg = /^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,4})$/;
@@ -16,21 +29,10 @@ export class Utils {
     );
   }
 
-  static async hashPassword(password) {
-    const saltRounds = 10;
+  static async hashPassword(password: string): Promise<string> {
+    const salt = randomBytes(16).toString('hex');
+    const hashedPassword = await scrypt(password, salt);
 
-    const hashedPassword = await new Promise((resolve, reject) => {
-      bcrypt.genSalt(saltRounds, function (err, salt) {
-        if (err) reject(new Error(err));
-
-        // hash the password using our new salt
-        bcrypt.hash(password, salt, function (err, hash) {
-          if (err) reject(new Error(err));
-          resolve(hash);
-        });
-      });
-    });
-
-    return hashedPassword;
+    return `${salt}:${hashedPassword.toString('hex')}`;
   }
 }

@@ -1,12 +1,34 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class SaveFullNameDto {
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  firstname: string;
+  firstName?: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  lastname: string;
+  firstname?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  lastname?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  middleName?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  middlename?: string;
 }

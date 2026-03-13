@@ -34,6 +34,19 @@ const getAppConfig = () => ({
   // Server settings
   port: parseInt(process.env.PORT, 10) || 3000,
 
+  session: {
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    maxAgeMs: parseInt(process.env.SESSION_MAX_AGE_MS || '3600000', 10),
+    ttlSeconds: parseInt(process.env.SESSION_TTL_SECONDS || '3600', 10),
+    redisPrefix: process.env.SESSION_REDIS_PREFIX || 'sess:',
+    allowMemoryFallback:
+      process.env.SESSION_ALLOW_MEMORY_FALLBACK !== 'false',
+    redisConnectTimeoutMs: parseInt(
+      process.env.SESSION_REDIS_CONNECT_TIMEOUT_MS || '1500',
+      10,
+    ),
+  },
+
   // CORS settings
   cors: {
     origin: process.env.CORS_ORIGIN || '*',
@@ -96,6 +109,18 @@ export const configuration = () => {
       host: process.env.REDIS_HOST || '127.0.0.1',
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
       password: process.env.REDIS_PASSWORD || undefined,
+    },
+    session: {
+      secret: process.env.SESSION_SECRET || 'your-secret-key',
+      maxAgeMs: parseInt(process.env.SESSION_MAX_AGE_MS || '3600000', 10),
+      ttlSeconds: parseInt(process.env.SESSION_TTL_SECONDS || '3600', 10),
+      redisPrefix: process.env.SESSION_REDIS_PREFIX || 'sess:',
+      allowMemoryFallback:
+        process.env.SESSION_ALLOW_MEMORY_FALLBACK !== 'false',
+      redisConnectTimeoutMs: parseInt(
+        process.env.SESSION_REDIS_CONNECT_TIMEOUT_MS || '1500',
+        10,
+      ),
     },
   };
 };

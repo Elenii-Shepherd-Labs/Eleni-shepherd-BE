@@ -1,4 +1,12 @@
-import { Controller, Get, Req, Res, UseGuards, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Req,
+  Res,
+  UseGuards,
+  HttpCode,
+  UnauthorizedException,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -142,9 +150,11 @@ For mobile, user data is appended as a \`user\` query param (JSON, URI-encoded).
         if (isMobileDeepLink) {
           const userPayload = encodeURIComponent(
             JSON.stringify({
-              id: dbUser.googleId,
+              id: String(dbUser.id),
               email: dbUser.email,
               displayName: dbUser.username,
+              subscriptionTier: dbUser.subscriptionTier,
+              fullname: dbUser.fullname,
             }),
           );
           const finalUrl = `${redirectUrl}?user=${userPayload}`;
@@ -200,9 +210,19 @@ const user = await response.json();
   async getProfile(@Req() req: Request) {
     console.log('[AuthController] Profile request, user:', req.user);
     if (!req.user) {
-      return { success: false, message: 'Unauthorized' };
+      throw new UnauthorizedException('Unauthorized');
     }
-    return req.user;
+
+    const user = req.user as any;
+
+    return {
+      id: String(user.id || user._id),
+      displayName: user.username || user.displayName || '',
+      email: user.email,
+      googleId: user.googleId,
+      subscriptionTier: user.subscriptionTier || 'free',
+      fullname: user.fullname || null,
+    };
   }
 
   @ApiCookieAuth('sessionId')

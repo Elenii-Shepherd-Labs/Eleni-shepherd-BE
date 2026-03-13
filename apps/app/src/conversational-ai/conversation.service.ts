@@ -130,11 +130,14 @@ export class ConversationService {
       session.messages,
       session.context,
     );
+    const aiText =
+      (aiResponseResp.data as { response?: string } | null)?.response ||
+      'I apologize, but I could not generate a response.';
 
     // Add AI response
     const assistantMsg: Message = {
       role: 'assistant',
-      content: aiResponseResp.data as string,
+      content: aiText,
     };
     session.messages.push(assistantMsg);
 
@@ -148,7 +151,7 @@ export class ConversationService {
     return createAppResponse(
       true,
       'Message processed',
-      { response: aiResponseResp.data, sessionId },
+      { response: aiText, sessionId },
       200,
     );
   }

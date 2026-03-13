@@ -31,7 +31,7 @@ import {
 import { OptionalAuthGuard } from '../common/guards/optional-auth.guard';
 
 @ApiTags('Onboarding')
-//@UseGuards(OptionalAuthGuard)
+@UseGuards(OptionalAuthGuard)
 @Controller('onboard')
 export class OnboardingController {
   constructor(
@@ -172,12 +172,17 @@ await handleSaveNameFromAudio(audioFile, nameType);
       throw new BadRequestException('Audio file is required');
     }
 
+    const requestUser = req.user as { id?: string } | undefined;
+    const userId = requestUser?.id;
+    if (!userId) {
+      throw new BadRequestException('User context is required');
+    }
+
     const text = await this.transcriptionService.transcribeFromFile(
       audioFile.path,
     );
 
     const cleanedName = text.replace(/[^a-zA-Z]/g, '');
-    const userId = req.user['id'];
     const resp = await this.onboardingService.saveName(
       userId,
       cleanedName,
@@ -319,7 +324,12 @@ await handleSaveFullName(updatedName);
     @Body() fullname: SaveFullNameDto,
     @Res() res: Response,
   ) {
-    const userId = req.user['id'];
+    const requestUser = req.user as { id?: string } | undefined;
+    const userId = requestUser?.id;
+    if (!userId) {
+      throw new BadRequestException('User context is required');
+    }
+
     const resp = await this.onboardingService.saveFullname(userId, fullname);
     return res.status(resp.status || 201).json(resp);
   }
