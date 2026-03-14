@@ -5,6 +5,7 @@ import { Model } from 'mongoose';
 import { SaveFullNameDto } from './dto';
 import { IAppResponse } from '@app/common/interfaces/response.interface';
 import { createAppResponse } from '@app/common/utils/response';
+import { isValidObjectId } from 'mongoose';
 
 @Injectable()
 export class OnboardingService {
@@ -31,6 +32,10 @@ export class OnboardingService {
     name: string,
     nameType: string,
   ): Promise<IAppResponse> {
+    if (!isValidObjectId(userId)) {
+      return createAppResponse(false, 'Valid user context is required', null, 400);
+    }
+
     const user = await this.userModel.findById(userId);
 
     if (!user) {
@@ -58,6 +63,10 @@ export class OnboardingService {
     userId: string,
     fullname: SaveFullNameDto,
   ): Promise<IAppResponse> {
+    if (!isValidObjectId(userId)) {
+      return createAppResponse(false, 'Valid user context is required', null, 400);
+    }
+
     const nextFullname = {
       firstname: fullname.firstName || fullname.firstname || undefined,
       lastname: fullname.lastName || fullname.lastname || undefined,

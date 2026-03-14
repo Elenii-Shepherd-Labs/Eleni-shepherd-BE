@@ -30,6 +30,12 @@ const createSessionStore = async (config: ConfigService) => {
     connectTimeout: sessionRedisConnectTimeoutMs,
   });
 
+  redis.on('error', (error) => {
+    console.warn(
+      `[Main] Redis session store connection warning: ${error.message}`,
+    );
+  });
+
   try {
     await redis.connect();
     await redis.ping();
@@ -116,6 +122,9 @@ async function bootstrap() {
   const isProduction = environment === 'production';
   console.log(
     `[Main] Environment: NODE_ENV=${environment}, isProduction=${isProduction}, sessionStore=${usesRedis ? 'redis' : 'memory'}`,
+  );
+  console.log(
+    `[Main] OAuth config: GOOGLE_CALLBACK_URL=${process.env.GOOGLE_CALLBACK_URL || 'not set'}, SUCCESS_REDIRECT_URL=${process.env.SUCCESS_REDIRECT_URL || 'not set'}`,
   );
   app.enableShutdownHooks();
 

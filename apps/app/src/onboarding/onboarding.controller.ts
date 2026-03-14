@@ -29,6 +29,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { OptionalAuthGuard } from '../common/guards/optional-auth.guard';
+import { isValidObjectId } from 'mongoose';
 
 @ApiTags('Onboarding')
 @UseGuards(OptionalAuthGuard)
@@ -174,8 +175,8 @@ await handleSaveNameFromAudio(audioFile, nameType);
 
     const requestUser = req.user as { id?: string } | undefined;
     const userId = requestUser?.id;
-    if (!userId) {
-      throw new BadRequestException('User context is required');
+    if (!userId || !isValidObjectId(userId)) {
+      throw new BadRequestException('Valid authenticated user context is required');
     }
 
     const text = await this.transcriptionService.transcribeFromFile(
@@ -326,8 +327,8 @@ await handleSaveFullName(updatedName);
   ) {
     const requestUser = req.user as { id?: string } | undefined;
     const userId = requestUser?.id;
-    if (!userId) {
-      throw new BadRequestException('User context is required');
+    if (!userId || !isValidObjectId(userId)) {
+      throw new BadRequestException('Valid authenticated user context is required');
     }
 
     const resp = await this.onboardingService.saveFullname(userId, fullname);

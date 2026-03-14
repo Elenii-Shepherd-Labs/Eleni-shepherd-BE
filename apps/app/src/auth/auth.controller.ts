@@ -1,11 +1,14 @@
 import {
   Controller,
   Get,
+  Post,
+  Body,
   Req,
   Res,
   UseGuards,
   HttpCode,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -31,10 +34,42 @@ function isSafeRedirect(url: string | undefined): url is string {
   return ALLOWED_REDIRECT_PREFIXES.some((prefix) => url.startsWith(prefix));
 }
 
+function appendQueryParam(url: string, key: string, value: string) {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}${key}=${encodeURIComponent(value)}`;
+}
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private getBearerToken(req: Request): string | null {
+    const header = req.headers.authorization;
+    if (typeof header === 'string' && header.startsWith('Bearer ')) {
+      return header.slice('Bearer '.length);
+    }
+
+    const altHeader = req.headers['x-mobile-auth'];
+    if (typeof altHeader === 'string') {
+      return altHeader;
+    }
+
+    return null;
+  }
+
+  private async resolveRequestUser(req: Request) {
+    if (req.user) {
+      return req.user as any;
+    }
+
+    const mobileToken = this.getBearerToken(req);
+    if (!mobileToken) {
+      return null;
+    }
+
+    return this.authService.findUserByMobileAuthToken(mobileToken);
+  }
 
   @ApiOperation({
     summary: 'Initiate Google OAuth authentication',
@@ -76,12 +111,13 @@ Callback URL for Google OAuth 2.0. This endpoint:
 4. Redirects back to the frontend using the \`state\` param (mobile deep link)
    or \`SUCCESS_REDIRECT_URL\` env var (web / fallback)
 
-For mobile, user data is appended as a \`user\` query param (JSON, URI-encoded).
+For mobile, a short-lived \`exchangeCode\` is appended so the app can
+exchange it for a mobile auth token and user payload.
     `,
   })
   @ApiResponse({
     status: 302,
-    description: 'Redirects to frontend with user data appended as query param',
+    description: 'Redirects to frontend with mobile auth exchange metadata',
   })
   @ApiResponse({ status: 401, description: 'Authentication failed' })
   @Get('google/callback')
@@ -141,23 +177,21 @@ For mobile, user data is appended as a \`user\` query param (JSON, URI-encoded).
         });
 
         // --- Build final URL ---
-        // For any mobile deep link (exp:// or elenii://) append user payload
-        // so the app can hydrate immediately without an extra /profile round-trip.
+        // For mobile deep links we append a short-lived exchange code so the
+        // app can bootstrap its own durable mobile auth token.
         const isMobileDeepLink =
           redirectUrl.startsWith('exp://') ||
           redirectUrl.startsWith('elenii://');
 
         if (isMobileDeepLink) {
-          const userPayload = encodeURIComponent(
-            JSON.stringify({
-              id: String(dbUser.id),
-              email: dbUser.email,
-              displayName: dbUser.username,
-              subscriptionTier: dbUser.subscriptionTier,
-              fullname: dbUser.fullname,
-            }),
+          const exchangeCode = this.authService.createMobileExchangeCode(
+            String(dbUser.id || dbUser._id),
           );
-          const finalUrl = `${redirectUrl}?user=${userPayload}`;
+          const finalUrl = appendQueryParam(
+            appendQueryParam(redirectUrl, 'exchangeCode', exchangeCode),
+            'authStatus',
+            'success',
+          );
           console.log('[AuthController] Mobile redirect →', finalUrl);
           return res.redirect(finalUrl);
         }
@@ -180,6 +214,43 @@ For mobile, user data is appended as a \`user\` query param (JSON, URI-encoded).
   @Get('success')
   async success(@Req() req: Request) {
     return { message: 'Authentication successful', user: req.user };
+  }
+
+  @ApiOperation({
+    summary: 'Exchange mobile auth callback code for a mobile auth token',
+  })
+  @ApiResponse({ status: 200, description: 'Mobile auth token issued' })
+  @ApiResponse({ status: 400, description: 'Exchange code invalid or expired' })
+  @Post('mobile/exchange')
+  async exchangeMobileAuth(@Body() body: { exchangeCode?: string }) {
+    if (!body?.exchangeCode) {
+      throw new BadRequestException('exchangeCode is required');
+    }
+
+    const user = await this.authService.consumeMobileExchangeCode(
+      body.exchangeCode,
+    );
+
+    if (!user) {
+      throw new BadRequestException('exchangeCode is invalid or expired');
+    }
+
+    return {
+      success: true,
+      message: 'Mobile authentication established',
+      data: {
+        authToken: this.authService.issueMobileAuthToken(user),
+        user: {
+          id: String(user.id || user._id),
+          displayName: user.username || '',
+          email: user.email,
+          googleId: user.googleId,
+          subscriptionTier: user.subscriptionTier || 'free',
+          fullname: user.fullname || null,
+        },
+      },
+      status: 200,
+    };
   }
 
   @ApiOperation({ summary: 'Authentication error page' })
@@ -208,12 +279,10 @@ const user = await response.json();
   @ApiResponse({ status: 401, description: 'Not authenticated' })
   @Get('profile')
   async getProfile(@Req() req: Request) {
-    console.log('[AuthController] Profile request, user:', req.user);
-    if (!req.user) {
+    const user = await this.resolveRequestUser(req);
+    if (!user) {
       throw new UnauthorizedException('Unauthorized');
     }
-
-    const user = req.user as any;
 
     return {
       id: String(user.id || user._id),

@@ -5,8 +5,9 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
+import { isValidObjectId } from 'mongoose';
+import { verifyMobileAuthToken } from '../../auth/mobile-auth.util';
 
 /**
  * Optional Auth Guard - Allows both authenticated and unauthenticated requests
@@ -31,19 +32,42 @@ export class OptionalAuthGuard implements CanActivate {
       return true;
     }
 
+    const authorizationHeader = request.headers.authorization;
+    if (
+      typeof authorizationHeader === 'string' &&
+      authorizationHeader.startsWith('Bearer ')
+    ) {
+      const token = authorizationHeader.slice('Bearer '.length);
+      const payload = verifyMobileAuthToken(token);
+      if (payload?.sub && isValidObjectId(payload.sub)) {
+        request.user = {
+          id: payload.sub,
+          isTemporary: false,
+          authType: 'mobile-token',
+        } as any;
+        return true;
+      }
+    }
+
     // Check for mobile client headers (userId or sessionId)
     const userId = request.headers['x-user-id'] || request.headers['userid'];
     const sessionId =
       request.headers['x-session-id'] || request.headers['sessionid'];
     const mobileClient = request.headers['x-mobile-client'] || request.headers['x-client-type'] === 'mobile';
 
-    // Allow mobile/unauthenticated requests with proper headers
-    if (userId || sessionId || mobileClient) {
-      // Create a minimal user context for unauthenticated requests
+    // Allow mobile/unauthenticated requests with a valid backend user id
+    if (typeof userId === 'string' && isValidObjectId(userId)) {
       request.user = {
-        id: (userId as string) || `temp_${Date.now()}`,
-        isTemporary: !userId,
+        id: userId,
+        isTemporary: false,
       } as any;
+      return true;
+    }
+
+    // Allow the request through for mobile/session-based clients, but do not
+    // synthesize a fake user id. Controllers can decide whether user context
+    // is optional or required for the specific endpoint.
+    if (sessionId || mobileClient) {
       return true;
     }
 
