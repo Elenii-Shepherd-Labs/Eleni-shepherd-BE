@@ -39,7 +39,6 @@ export class OnboardingController {
     private readonly transcriptionService: TranscriptionService,
     private readonly onboardingService: OnboardingService,
   ) {}
-
   @Post('name')
   @HttpCode(201)
   @UseInterceptors(

@@ -140,6 +140,8 @@ const handleAudioUpload = async (audioFile: File) => {
     const resp = await this.speechToTextService.transcribeAudio(
       file.buffer,
       body.language,
+      file.originalname,
+      file.mimetype,
     );
 
     if (!resp.success) {

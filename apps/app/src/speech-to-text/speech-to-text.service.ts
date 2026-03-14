@@ -25,14 +25,25 @@ export class SpeechToTextService {
   async transcribeAudio(
     audioBuffer: Buffer,
     language?: string,
+    originalName?: string,
+    mimeType?: string,
   ): Promise<IAppResponse> {
     try {
       let text: string;
       if (!this.openai) {
         text = this.mockTranscription(audioBuffer);
       } else {
-        const file = new File([new Uint8Array(audioBuffer)], 'audio.wav', {
-          type: 'audio/wav',
+        const normalizedMimeType =
+          typeof mimeType === 'string' && mimeType.trim().length > 0
+            ? mimeType
+            : 'audio/m4a';
+        const normalizedFileName =
+          typeof originalName === 'string' && originalName.trim().length > 0
+            ? originalName
+            : this.inferFileNameFromMimeType(normalizedMimeType);
+
+        const file = new File([new Uint8Array(audioBuffer)], normalizedFileName, {
+          type: normalizedMimeType,
         });
 
         const transcription = await this.openai.audio.transcriptions.create({
@@ -61,9 +72,16 @@ export class SpeechToTextService {
   async transcribeAudioStream(
     audioBuffer: Buffer,
     language?: string,
+    originalName?: string,
+    mimeType?: string,
   ): Promise<IAppResponse> {
     try {
-      const resp = await this.transcribeAudio(audioBuffer, language);
+      const resp = await this.transcribeAudio(
+        audioBuffer,
+        language,
+        originalName,
+        mimeType,
+      );
       return resp;
     } catch (error) {
       this.logger.error(`Stream transcription error: ${error.message}`);
@@ -125,6 +143,26 @@ export class SpeechToTextService {
   private mockTranscription(audioBuffer: Buffer): string {
     this.logger.warn('Using mock transcription - no API key configured');
     return `[Mock transcription of ${audioBuffer.length} bytes of audio]`;
+  }
+
+  private inferFileNameFromMimeType(mimeType: string): string {
+    const extensionMap: Record<string, string> = {
+      'audio/flac': 'flac',
+      'audio/mp4': 'mp4',
+      'audio/m4a': 'm4a',
+      'audio/x-m4a': 'm4a',
+      'audio/mp3': 'mp3',
+      'audio/mpeg': 'mp3',
+      'audio/mpga': 'mpga',
+      'audio/ogg': 'ogg',
+      'audio/oga': 'oga',
+      'audio/wav': 'wav',
+      'audio/x-wav': 'wav',
+      'audio/webm': 'webm',
+    };
+
+    const extension = extensionMap[mimeType.toLowerCase()] || 'm4a';
+    return `audio.${extension}`;
   }
 
   /**
