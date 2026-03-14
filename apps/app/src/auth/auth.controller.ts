@@ -39,10 +39,41 @@ function appendQueryParam(url: string, key: string, value: string) {
   return `${url}${separator}${key}=${encodeURIComponent(value)}`;
 }
 
+function toClientFullname(
+  fullname?:
+    | {
+        firstname?: string;
+        lastname?: string;
+        middlename?: string;
+      }
+    | null,
+) {
+  if (!fullname) {
+    return null;
+  }
+
+  return {
+    firstName: fullname.firstname || '',
+    lastName: fullname.lastname || '',
+    middleName: fullname.middlename || '',
+  };
+}
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private toMobileUserPayload(user: any) {
+    return {
+      id: String(user.id || user._id),
+      displayName: user.username || '',
+      email: user.email,
+      googleId: user.googleId,
+      subscriptionTier: user.subscriptionTier || 'free',
+      fullname: toClientFullname(user.fullname),
+    };
+  }
 
   private getBearerToken(req: Request): string | null {
     const header = req.headers.authorization;
@@ -240,17 +271,38 @@ exchange it for a mobile auth token and user payload.
       message: 'Mobile authentication established',
       data: {
         authToken: this.authService.issueMobileAuthToken(user),
-        user: {
-          id: String(user.id || user._id),
-          displayName: user.username || '',
-          email: user.email,
-          googleId: user.googleId,
-          subscriptionTier: user.subscriptionTier || 'free',
-          fullname: user.fullname || null,
-        },
+        user: this.toMobileUserPayload(user),
       },
       status: 200,
     };
+  }
+
+  @ApiOperation({
+    summary: 'Verify a Google ID token for native/mobile sign-in',
+  })
+  @ApiResponse({ status: 200, description: 'Google ID token verified' })
+  @ApiResponse({ status: 400, description: 'idToken missing or invalid' })
+  @Post('mobile/google/verify')
+  async verifyMobileGoogleToken(@Body() body: { idToken?: string }) {
+    if (!body?.idToken) {
+      throw new BadRequestException('idToken is required');
+    }
+
+    try {
+      const user = await this.authService.validateMobileGoogleUser(body.idToken);
+
+      return {
+        success: true,
+        message: 'Google mobile authentication established',
+        data: {
+          authToken: this.authService.issueMobileAuthToken(user),
+          user: this.toMobileUserPayload(user),
+        },
+        status: 200,
+      };
+    } catch (error) {
+      throw new BadRequestException('Google ID token is invalid');
+    }
   }
 
   @ApiOperation({ summary: 'Authentication error page' })
@@ -290,7 +342,7 @@ const user = await response.json();
       email: user.email,
       googleId: user.googleId,
       subscriptionTier: user.subscriptionTier || 'free',
-      fullname: user.fullname || null,
+      fullname: toClientFullname(user.fullname),
     };
   }
 

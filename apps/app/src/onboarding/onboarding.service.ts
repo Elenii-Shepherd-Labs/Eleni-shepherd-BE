@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { User } from '../auth/user.schema';
 import { Model } from 'mongoose';
 import { SaveFullNameDto } from './dto';
+import { NameField } from './dto/save-name-as-text.dto';
 import { IAppResponse } from '@app/common/interfaces/response.interface';
 import { createAppResponse } from '@app/common/utils/response';
 import { isValidObjectId } from 'mongoose';
@@ -11,11 +12,11 @@ import { isValidObjectId } from 'mongoose';
 export class OnboardingService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
-  private normalizeNameField(nameType: string): 'firstname' | 'lastname' | 'middlename' {
-    const normalized = nameType.replace(/[^a-zA-Z]/g, '').toLowerCase();
-
-    if (normalized === 'lastname') return 'lastname';
-    if (normalized === 'middlename') return 'middlename';
+  private normalizeNameField(
+    nameType: NameField,
+  ): 'firstname' | 'lastname' | 'middlename' {
+    if (nameType === 'lastName') return 'lastname';
+    if (nameType === 'middleName') return 'middlename';
     return 'firstname';
   }
 
@@ -27,10 +28,22 @@ export class OnboardingService {
     };
   }
 
+  private toStoredFullname(fullname: {
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+  }) {
+    return {
+      firstname: fullname.firstName || undefined,
+      lastname: fullname.lastName || undefined,
+      middlename: fullname.middleName || undefined,
+    };
+  }
+
   async saveName(
     userId: string,
     name: string,
-    nameType: string,
+    nameType: NameField,
   ): Promise<IAppResponse> {
     if (!isValidObjectId(userId)) {
       return createAppResponse(false, 'Valid user context is required', null, 400);
@@ -67,11 +80,7 @@ export class OnboardingService {
       return createAppResponse(false, 'Valid user context is required', null, 400);
     }
 
-    const nextFullname = {
-      firstname: fullname.firstName || fullname.firstname || undefined,
-      lastname: fullname.lastName || fullname.lastname || undefined,
-      middlename: fullname.middleName || fullname.middlename || undefined,
-    };
+    const nextFullname = this.toStoredFullname(fullname);
 
     const user = await this.userModel.findByIdAndUpdate(
       userId,
