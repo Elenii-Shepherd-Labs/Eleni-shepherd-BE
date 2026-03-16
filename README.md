@@ -70,8 +70,9 @@ SESSION_TTL_SECONDS=3600
 SESSION_REDIS_PREFIX=sess:
 SESSION_ALLOW_MEMORY_FALLBACK=true
 GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
-SUCCESS_REDIRECT_URL=exp://127.0.0.1:8081/--/auth/callback
 ```
+
+OAuth redirect targets are client-owned. Mobile or web clients must pass their runtime-generated callback URL in the OAuth `state` query param, and the backend will only redirect to a validated `state` target.
 
 ## Repository Layout
 

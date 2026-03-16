@@ -47,7 +47,6 @@ BASE_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
-SUCCESS_REDIRECT_URL=exp://127.0.0.1:8081/--/auth/callback
 SESSION_SECRET=...
 SESSION_MAX_AGE_MS=3600000
 SESSION_TTL_SECONDS=3600
@@ -55,6 +54,8 @@ DATABASE_URL=mongodb://localhost:27017/eleni-shepherd
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 ```
+
+OAuth redirect targets are client-owned. The mobile app should send its runtime-generated callback URL in the OAuth `state` param, and the backend will only redirect to a validated `state` target.
 
 ## Python Vision Service
 

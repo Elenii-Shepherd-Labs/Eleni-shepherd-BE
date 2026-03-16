@@ -124,7 +124,7 @@ async function bootstrap() {
     `[Main] Environment: NODE_ENV=${environment}, isProduction=${isProduction}, sessionStore=${usesRedis ? 'redis' : 'memory'}`,
   );
   console.log(
-    `[Main] OAuth config: GOOGLE_CALLBACK_URL=${process.env.GOOGLE_CALLBACK_URL || 'not set'}, SUCCESS_REDIRECT_URL=${process.env.SUCCESS_REDIRECT_URL || 'not set'}`,
+    `[Main] OAuth config: GOOGLE_CALLBACK_URL=${process.env.GOOGLE_CALLBACK_URL || 'not set'}, redirectSource=client-state`,
   );
   app.enableShutdownHooks();
 

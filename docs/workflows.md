@@ -2,11 +2,11 @@
 
 ## Google OAuth
 
-1. Client hits `GET /auth/google` with a redirect target in query state.
+1. Client hits `GET /auth/google` with a redirect target in query `state`.
 2. Google returns to the backend callback.
 3. Backend validates or creates the user.
 4. Backend establishes a session.
-5. Backend redirects back to mobile or web.
+5. Backend validates the request-scoped `state` URL and redirects only to that client-provided target.
 
 ## Onboarding
 

@@ -23,6 +23,7 @@ import { Request, Response } from 'express';
 const ALLOWED_REDIRECT_PREFIXES = [
   'exp://',
   'elenii://',
+  'https://',
   'http://localhost',
   'http://127.0.0.1',
   'http://10.',
@@ -32,6 +33,21 @@ const ALLOWED_REDIRECT_PREFIXES = [
 function isSafeRedirect(url: string | undefined): url is string {
   if (!url) return false;
   return ALLOWED_REDIRECT_PREFIXES.some((prefix) => url.startsWith(prefix));
+}
+
+function isMobileRedirect(url: string) {
+  return url.startsWith('exp://') || url.startsWith('elenii://');
+}
+
+function resolveRedirectUrl(stateParam?: string) {
+  if (isSafeRedirect(stateParam)) {
+    return {
+      redirectUrl: stateParam,
+      source: 'state',
+    } as const;
+  }
+
+  return null;
 }
 
 function appendQueryParam(url: string, key: string, value: string) {
@@ -139,8 +155,8 @@ Callback URL for Google OAuth 2.0. This endpoint:
 1. Receives the authorization code from Google
 2. Validates / creates the user in the database
 3. Establishes a session
-4. Redirects back to the frontend using the \`state\` param (mobile deep link)
-   or \`SUCCESS_REDIRECT_URL\` env var (web / fallback)
+4. Redirects back to the frontend using the validated client-provided
+   \`state\` param
 
 For mobile, a short-lived \`exchangeCode\` is appended so the app can
 exchange it for a mobile auth token and user payload.
@@ -191,28 +207,30 @@ exchange it for a mobile auth token and user payload.
           });
         }
 
-        // --- Resolve redirect URL ---
-        // Priority: state param (mobile) → env var (web) → hardcoded fallback
+        // Redirect target is client-owned. We only honor a safe request-scoped `state`.
         const stateParam = req.query.state as string | undefined;
-        const envRedirect = process.env.SUCCESS_REDIRECT_URL;
+        const resolvedRedirect = resolveRedirectUrl(stateParam);
 
-        const redirectUrl = isSafeRedirect(stateParam)
-          ? stateParam
-          : envRedirect || 'elenii://Onboarding';
+        if (!resolvedRedirect) {
+          console.error('[AuthController] Missing or unsafe redirect state', {
+            stateParam: stateParam ?? 'not set',
+          });
+          return res.status(400).send('Missing or invalid OAuth redirect state');
+        }
+
+        const { redirectUrl, source } = resolvedRedirect;
 
         console.log('[AuthController] Redirect resolution:', {
           stateParam: stateParam ?? 'not set',
-          envRedirect: envRedirect ?? 'not set',
           isSafe: isSafeRedirect(stateParam),
+          source,
           final: redirectUrl,
         });
 
         // --- Build final URL ---
         // For mobile deep links we append a short-lived exchange code so the
         // app can bootstrap its own durable mobile auth token.
-        const isMobileDeepLink =
-          redirectUrl.startsWith('exp://') ||
-          redirectUrl.startsWith('elenii://');
+        const isMobileDeepLink = isMobileRedirect(redirectUrl);
 
         if (isMobileDeepLink) {
           const exchangeCode = this.authService.createMobileExchangeCode(

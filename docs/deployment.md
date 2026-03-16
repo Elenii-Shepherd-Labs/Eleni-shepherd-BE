@@ -30,7 +30,6 @@ Start from [`.env.example`](../.env.example). The minimum production set is:
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_CALLBACK_URL`
-- `SUCCESS_REDIRECT_URL`
 
 Feature-specific credentials such as `OPENAI_API_KEY`, `GNEWS_API_KEY`, and mail or payment keys should only be supplied when those modules are enabled.
 
@@ -60,7 +59,7 @@ The workflow only runs when backend-impacting files change, so docs-only commits
 - Confirm `npm run build` passes.
 - Confirm MongoDB and Redis are reachable from the target environment.
 - Confirm Google OAuth redirect URLs match the deployed backend origin.
-- Confirm the mobile app points at the deployed backend base URL.
+- Confirm the mobile app points at the deployed backend base URL and sends a valid OAuth `state` callback target.
 - Confirm `/api` Swagger loads in non-production environments where it is expected.
 
 ## Runbook Notes
@@ -70,7 +69,7 @@ The workflow only runs when backend-impacting files change, so docs-only commits
 - Verify `SESSION_SECRET` is set and stable across instances.
 - Verify Redis-backed sessions are enabled in production and not silently falling back to memory.
 - Verify the Google callback URL matches the deployed origin exactly.
-- Verify the success redirect matches the mobile deep-link return target.
+- Verify the client sends a valid OAuth `state` redirect target that matches an allowed mobile scheme or approved web origin.
 
 ### Startup Issues
 
