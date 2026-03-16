@@ -44,6 +44,17 @@ npm run start:prod
 
 The compiled app entrypoint is `dist/apps/app/main`.
 
+## Develop Branch Deploy Automation
+
+The backend can deploy to Render automatically from GitHub Actions:
+
+- workflow: `.github/workflows/render-deploy-develop.yml`
+- branch: `develop`
+- deploy mechanism: Render deploy hook stored as `RENDER_DEPLOY_HOOK_URL`
+- guardrail: the workflow runs `npm ci` and `npm run build` before the deploy hook is triggered
+
+The workflow only runs when backend-impacting files change, so docs-only commits do not request a new Render deploy.
+
 ## Pre-Deploy Checks
 
 - Confirm `npm run build` passes.
@@ -66,6 +77,7 @@ The compiled app entrypoint is `dist/apps/app/main`.
 - Check that required Nest dependencies were installed cleanly.
 - Check MongoDB and Redis connectivity first before debugging feature modules.
 - If the app builds locally but not in CI, compare Node.js versions and lockfile state.
+- If the Render deploy workflow fails before the hook call, verify `RENDER_DEPLOY_HOOK_URL` exists in GitHub Actions secrets.
 
 ### Vision Service
 

@@ -36,6 +36,16 @@ Build:
 npm run build
 ```
 
+## Develop Deploys
+
+The backend repo can trigger a Render deploy automatically on pushes to `develop`:
+
+- workflow: `.github/workflows/render-deploy-develop.yml`
+- secret required: `RENDER_DEPLOY_HOOK_URL`
+- guardrail: the workflow runs `npm ci` and `npm run build` before it requests the Render deploy
+
+The workflow only runs for backend-impacting changes, so docs-only edits do not trigger a new deploy.
+
 Test:
 
 ```bash

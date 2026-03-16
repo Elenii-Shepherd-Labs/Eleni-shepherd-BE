@@ -1,0 +1,68 @@
+name: Render Deploy Develop
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/render-deploy-develop.yml'
+      - 'apps/**'
+      - 'libs/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'nest-cli.json'
+      - 'tsconfig.json'
+      - 'tsconfig.build.json'
+      - 'webpack.config.js'
+      - 'render.yaml'
+
+concurrency:
+  group: render-deploy-develop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-backend:
+    name: Validate And Trigger Render Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+    steps:
+      - name: Validate required inputs
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "Missing required GitHub secret: RENDER_DEPLOY_HOOK_URL"
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build backend
+        run: npm run build
+
+      - name: Trigger Render deploy hook
+        run: |
+          curl --fail --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
+
+      - name: Publish workflow summary
+        run: |
+          {
+            echo "## Render Deploy"
+            echo ""
+            echo "- Branch: $GITHUB_REF_NAME"
+            echo "- Commit: $GITHUB_SHA"
+            echo "- Target: Render backend service via deploy hook"
+          } >> "$GITHUB_STEP_SUMMARY"
