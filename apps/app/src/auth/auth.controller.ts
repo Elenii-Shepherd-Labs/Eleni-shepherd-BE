@@ -86,6 +86,7 @@ export class AuthController {
       displayName: user.username || '',
       email: user.email,
       googleId: user.googleId,
+      onboardingComplete: Boolean(user.onboardingComplete),
       subscriptionTier: user.subscriptionTier || 'free',
       fullname: toClientFullname(user.fullname),
     };
@@ -359,6 +360,7 @@ const user = await response.json();
       displayName: user.username || user.displayName || '',
       email: user.email,
       googleId: user.googleId,
+      onboardingComplete: Boolean(user.onboardingComplete),
       subscriptionTier: user.subscriptionTier || 'free',
       fullname: toClientFullname(user.fullname),
     };

@@ -11,6 +11,9 @@ export class FullName {
 
   @Prop()
   lastname?: string;
+
+  @Prop()
+  middlename?: string;
 }
 
 @Schema({ timestamps: true })
@@ -26,6 +29,9 @@ export class User extends Document {
 
   @Prop({ required: true })
   googleId: string;
+
+  @Prop({ type: Boolean, default: false })
+  onboardingComplete: boolean;
 
   /** free = English only; subscribed = English, Hausa, Yoruba, Igbo, Swahili, German, etc. */
   @Prop({ type: String, enum: ['free', 'subscribed'], default: 'free' })

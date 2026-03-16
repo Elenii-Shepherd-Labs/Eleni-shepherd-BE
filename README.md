@@ -5,7 +5,7 @@ NestJS backend for Elenii Shepherd. This repo contains the API, shared backend l
 ## What This Backend Does
 
 - Google OAuth authentication and session bootstrap
-- onboarding and user profile persistence
+- onboarding and user profile persistence, including backend-owned onboarding completion
 - conversational AI session management
 - speech-to-text and text-to-speech
 - accessibility helpers for reading and navigation

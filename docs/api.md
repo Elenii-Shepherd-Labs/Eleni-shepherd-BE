@@ -29,6 +29,7 @@
 
 - `POST /onboard/name`
 - `POST /onboard/fullname`
+- `POST /onboard/complete`
 
 ### Accessibility And Vision
 
@@ -68,4 +69,3 @@ Use Swagger for the most current endpoint schemas:
 ```text
 http://localhost:3000/api
 ```
-

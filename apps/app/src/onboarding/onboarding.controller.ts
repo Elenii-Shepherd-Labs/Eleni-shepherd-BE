@@ -333,4 +333,44 @@ await handleSaveFullName(updatedName);
     const resp = await this.onboardingService.saveFullname(userId, fullname);
     return res.status(resp.status || 201).json(resp);
   }
+
+  @Post('complete')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Mark onboarding as complete',
+    description: `
+Persists onboarding completion on the authenticated user profile.
+
+This endpoint makes the backend authoritative for whether a user has finished
+the onboarding flow, so clients should hydrate this value from \`/auth/profile\`
+instead of maintaining their own durable completion flag.
+    `,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Onboarding completion saved',
+    schema: {
+      properties: {
+        success: { type: 'boolean', example: true },
+        message: { type: 'string', example: 'Onboarding completed' },
+        data: {
+          type: 'object',
+          properties: {
+            onboardingComplete: { type: 'boolean', example: true },
+          },
+        },
+        status: { type: 'number', example: 200 },
+      },
+    },
+  })
+  async completeOnboarding(@Req() req: Request, @Res() res: Response) {
+    const requestUser = req.user as { id?: string } | undefined;
+    const userId = requestUser?.id;
+    if (!userId || !isValidObjectId(userId)) {
+      throw new BadRequestException('Valid authenticated user context is required');
+    }
+
+    const resp = await this.onboardingService.completeOnboarding(userId);
+    return res.status(resp.status || 200).json(resp);
+  }
 }

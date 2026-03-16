@@ -101,4 +101,31 @@ export class OnboardingService {
       200,
     );
   }
+
+  async completeOnboarding(userId: string): Promise<IAppResponse> {
+    if (!isValidObjectId(userId)) {
+      return createAppResponse(false, 'Valid user context is required', null, 400);
+    }
+
+    const user = await this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        $set: { onboardingComplete: true },
+      },
+      { new: true },
+    );
+
+    if (!user) {
+      return createAppResponse(false, 'User not found', null, 404);
+    }
+
+    return createAppResponse(
+      true,
+      'Onboarding completed',
+      {
+        onboardingComplete: Boolean(user.onboardingComplete),
+      },
+      200,
+    );
+  }
 }
