@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { GoogleStrategy } from './google.strategy';
+import { GoogleAuthGuard } from './google-auth.guard';
 import { User, UserSchema } from './user.schema';
 
 @Module({
@@ -12,6 +13,6 @@ import { User, UserSchema } from './user.schema';
     PassportModule.register({ defaultStrategy: 'google', session: true }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, GoogleStrategy],
+  providers: [AuthService, GoogleStrategy, GoogleAuthGuard],
 })
 export class AuthModule {}

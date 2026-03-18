@@ -12,10 +12,26 @@ export class AuthService {
     string,
     { userId: string; expiresAt: number }
   >();
+  private readonly oauthRedirectStates = new Map<
+    string,
+    { redirectUrl: string; expiresAt: number }
+  >();
   private readonly googleClient: OAuth2Client;
 
   constructor(@InjectModel(User.name) private userModel: Model<User>) {
     this.googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+  }
+
+  private getGoogleAudiences(): string[] {
+    const audiences = [
+      process.env.GOOGLE_CLIENT_ID,
+      ...(process.env.GOOGLE_ALLOWED_CLIENT_IDS || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ];
+
+    return [...new Set(audiences.filter(Boolean) as string[])];
   }
 
   async validateUser(
@@ -39,14 +55,16 @@ export class AuthService {
   }
 
   async verifyGoogleIdToken(idToken: string): Promise<TokenPayload | null> {
-    const audience = process.env.GOOGLE_CLIENT_ID;
-    if (!audience) {
-      throw new Error('GOOGLE_CLIENT_ID environment variable is required');
+    const audiences = this.getGoogleAudiences();
+    if (!audiences.length) {
+      throw new Error(
+        'GOOGLE_CLIENT_ID or GOOGLE_ALLOWED_CLIENT_IDS must be configured',
+      );
     }
 
     const ticket = await this.googleClient.verifyIdToken({
       idToken,
-      audience,
+      audience: audiences.length === 1 ? audiences[0] : audiences,
     });
 
     return ticket.getPayload() || null;
@@ -76,6 +94,33 @@ export class AuthService {
     });
 
     return code;
+  }
+
+  createOAuthRedirectState(redirectUrl: string): string {
+    const state = crypto.randomBytes(24).toString('hex');
+
+    this.cleanupExpiredOAuthRedirectStates();
+    this.oauthRedirectStates.set(state, {
+      redirectUrl,
+      expiresAt: Date.now() + 1000 * 60 * 10,
+    });
+
+    return state;
+  }
+
+  consumeOAuthRedirectState(state: string): string | null {
+    const record = this.oauthRedirectStates.get(state);
+    if (!record) {
+      return null;
+    }
+
+    this.oauthRedirectStates.delete(state);
+
+    if (record.expiresAt <= Date.now()) {
+      return null;
+    }
+
+    return record.redirectUrl;
   }
 
   async consumeMobileExchangeCode(code: string): Promise<User | null> {
@@ -111,6 +156,15 @@ export class AuthService {
     for (const [code, record] of this.mobileExchangeCodes.entries()) {
       if (record.expiresAt <= now) {
         this.mobileExchangeCodes.delete(code);
+      }
+    }
+  }
+
+  private cleanupExpiredOAuthRedirectStates() {
+    const now = Date.now();
+    for (const [state, record] of this.oauthRedirectStates.entries()) {
+      if (record.expiresAt <= now) {
+        this.oauthRedirectStates.delete(state);
       }
     }
   }

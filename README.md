@@ -69,6 +69,8 @@ SESSION_MAX_AGE_MS=3600000
 SESSION_TTL_SECONDS=3600
 SESSION_REDIS_PREFIX=sess:
 SESSION_ALLOW_MEMORY_FALLBACK=true
+GOOGLE_CLIENT_ID=your-google-web-client-id
+GOOGLE_ALLOWED_CLIENT_IDS=optional-comma-separated-mobile-or-ios-client-ids
 GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
 ```
 

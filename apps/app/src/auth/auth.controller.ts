@@ -19,6 +19,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
+import passport from 'passport';
+import { GoogleAuthGuard } from './google-auth.guard';
 
 const ALLOWED_REDIRECT_PREFIXES = [
   'exp://',
@@ -39,11 +41,11 @@ function isMobileRedirect(url: string) {
   return url.startsWith('exp://') || url.startsWith('elenii://');
 }
 
-function resolveRedirectUrl(stateParam?: string) {
+function resolveDirectRedirectUrl(stateParam?: string) {
   if (isSafeRedirect(stateParam)) {
     return {
       redirectUrl: stateParam,
-      source: 'state',
+      source: 'state-direct',
     } as const;
   }
 
@@ -53,6 +55,37 @@ function resolveRedirectUrl(stateParam?: string) {
 function appendQueryParam(url: string, key: string, value: string) {
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}${key}=${encodeURIComponent(value)}`;
+}
+
+function getRequestOrigin(req: Request) {
+  const forwardedProtoHeader = req.headers['x-forwarded-proto'];
+  const forwardedProto = Array.isArray(forwardedProtoHeader)
+    ? forwardedProtoHeader[0]
+    : forwardedProtoHeader;
+  const protocol =
+    typeof forwardedProto === 'string' && forwardedProto.length > 0
+      ? forwardedProto.split(',')[0].trim()
+      : req.protocol;
+
+  const forwardedHostHeader = req.headers['x-forwarded-host'];
+  const forwardedHost = Array.isArray(forwardedHostHeader)
+    ? forwardedHostHeader[0]
+    : forwardedHostHeader;
+  const host =
+    typeof forwardedHost === 'string' && forwardedHost.length > 0
+      ? forwardedHost.split(',')[0].trim()
+      : req.get('host');
+
+  return `${protocol}://${host}`;
+}
+
+function buildGoogleCallbackUrl(req: Request) {
+  const configuredCallbackUrl = process.env.GOOGLE_CALLBACK_URL?.trim();
+  if (configuredCallbackUrl) {
+    return configuredCallbackUrl;
+  }
+
+  return `${getRequestOrigin(req)}/auth/google/callback`;
 }
 
 function toClientFullname(
@@ -78,7 +111,10 @@ function toClientFullname(
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly googleAuthGuard: GoogleAuthGuard,
+  ) {}
 
   private toMobileUserPayload(user: any) {
     return {
@@ -142,11 +178,37 @@ WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
   @ApiResponse({ status: 302, description: 'Redirect to Google login page' })
   @Get('google')
   @HttpCode(302)
-  @UseGuards(AuthGuard('google'))
-  async googleAuth() {
-    // Passport intercepts this and redirects to Google.
-    // The `state` query param is forwarded automatically when
-    // GoogleStrategy is configured with `state: true`.
+  async googleAuth(@Req() req: Request, @Res() res: Response) {
+    const redirectUrl = req.query.state as string | undefined;
+    const resolvedRedirect = resolveDirectRedirectUrl(redirectUrl);
+
+    if (!resolvedRedirect) {
+      console.error('[AuthController] Missing or unsafe OAuth start redirect', {
+        stateParam: redirectUrl ?? 'not set',
+      });
+      return res.status(400).send('Missing or invalid OAuth redirect state');
+    }
+
+    const oauthState = this.authService.createOAuthRedirectState(
+      resolvedRedirect.redirectUrl,
+    );
+    const callbackURL = buildGoogleCallbackUrl(req);
+
+    console.log('[AuthController] OAuth start redirect resolution:', {
+      stateParam: redirectUrl,
+      oauthState,
+      callbackURL,
+      finalRedirect: resolvedRedirect.redirectUrl,
+    });
+
+    passport.authenticate(
+      'google',
+      {
+        scope: ['email', 'profile'],
+        state: oauthState,
+        callbackURL,
+      } as any,
+    )(req, res);
   }
 
   @ApiOperation({
@@ -169,7 +231,7 @@ exchange it for a mobile auth token and user payload.
   })
   @ApiResponse({ status: 401, description: 'Authentication failed' })
   @Get('google/callback')
-  @UseGuards(AuthGuard('google'))
+  @UseGuards(GoogleAuthGuard)
   async googleAuthCallback(@Req() req: Request, @Res() res: Response) {
     console.log('[AuthController] Google OAuth callback received');
 
@@ -210,7 +272,16 @@ exchange it for a mobile auth token and user payload.
 
         // Redirect target is client-owned. We only honor a safe request-scoped `state`.
         const stateParam = req.query.state as string | undefined;
-        const resolvedRedirect = resolveRedirectUrl(stateParam);
+        const storedRedirectUrl = stateParam
+          ? this.authService.consumeOAuthRedirectState(stateParam)
+          : null;
+        const resolvedRedirect =
+          (storedRedirectUrl
+            ? {
+                redirectUrl: storedRedirectUrl,
+                source: 'state-store',
+              }
+            : null) ?? resolveDirectRedirectUrl(stateParam);
 
         if (!resolvedRedirect) {
           console.error('[AuthController] Missing or unsafe redirect state', {
