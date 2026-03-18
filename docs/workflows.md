@@ -2,11 +2,18 @@
 
 ## Google OAuth
 
-1. Client hits `GET /auth/google` with a redirect target in query `state`.
+1. The Expo app opens backend `GET /auth/google` in the browser and passes its runtime deep link in query `state`.
 2. Google returns to the backend callback.
-3. Backend validates or creates the user.
-4. Backend establishes a session.
-5. Backend validates the request-scoped `state` URL and redirects only to that client-provided target.
+3. The backend validates or creates the user.
+4. The backend establishes a session.
+5. The backend validates the request-scoped `state` URL and redirects only to that client-provided target.
+6. For mobile deep links, the backend appends a short-lived `exchangeCode`.
+7. The app exchanges that code through `POST /auth/mobile/exchange` and receives the app-owned auth token plus canonical profile payload.
+
+### Direct Token Compatibility
+1. A compatible client can still send a Google ID token to `POST /auth/google/token`.
+2. The backend verifies the token with Google using `GOOGLE_CLIENT_ID`.
+3. The backend upserts the canonical user record and issues the app's own auth token.
 
 ## Onboarding
 

@@ -69,12 +69,13 @@ SESSION_MAX_AGE_MS=3600000
 SESSION_TTL_SECONDS=3600
 SESSION_REDIS_PREFIX=sess:
 SESSION_ALLOW_MEMORY_FALLBACK=true
-GOOGLE_CLIENT_ID=your-google-web-client-id
-GOOGLE_ALLOWED_CLIENT_IDS=optional-comma-separated-mobile-or-ios-client-ids
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
 GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
 ```
 
-OAuth redirect targets are client-owned. Mobile or web clients must pass their runtime-generated callback URL in the OAuth `state` query param, and the backend will only redirect to a validated `state` target.
+The native Expo app now starts Google sign-in by opening `GET /auth/google` in the browser and passing its runtime-generated deep link in the OAuth `state` query param. After Google returns to `GOOGLE_CALLBACK_URL`, the backend validates or creates the user, issues a short-lived mobile `exchangeCode`, and redirects back to the app deep link so the app can finish bootstrap through `POST /auth/mobile/exchange`.
+
+`POST /auth/google/token` is still available for compatible clients that send a Google ID token directly, but the browser callback flow is now the primary mobile path.
 
 ## Repository Layout
 

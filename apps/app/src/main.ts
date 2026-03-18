@@ -183,8 +183,10 @@ http://localhost:3000
 \`\`\`
 
 ## Authentication
-All endpoints except \`/auth/google*\` require authentication via Google OAuth 2.0.
-Session cookies are automatically managed after successful Google login.
+The native Expo client authenticates by opening \`/auth/google\` in the browser, then following the backend callback redirect back into the app with a short-lived mobile exchange code.
+\`POST /auth/mobile/exchange\` completes the native app session bootstrap.
+\`POST /auth/google/token\` remains available for clients that send a Google ID token directly.
+Session cookies are automatically managed after successful browser-based Google login.
 
 ## Response Format
 All API responses follow a standardized format:

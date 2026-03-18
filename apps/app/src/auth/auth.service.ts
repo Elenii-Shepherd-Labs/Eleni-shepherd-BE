@@ -22,16 +22,13 @@ export class AuthService {
     this.googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
   }
 
-  private getGoogleAudiences(): string[] {
-    const audiences = [
-      process.env.GOOGLE_CLIENT_ID,
-      ...(process.env.GOOGLE_ALLOWED_CLIENT_IDS || '')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean),
-    ];
+  private getRequiredGoogleClientId(): string {
+    const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+    if (!clientId) {
+      throw new Error('GOOGLE_CLIENT_ID environment variable is required');
+    }
 
-    return [...new Set(audiences.filter(Boolean) as string[])];
+    return clientId;
   }
 
   async validateUser(
@@ -42,7 +39,26 @@ export class AuthService {
     let user = await this.userModel.findOne({ googleId });
     if (!user) {
       user = await this.userModel.create({ googleId, email, username });
+    } else {
+      const nextEmail = email.trim();
+      const nextUsername = username.trim();
+      let shouldSave = false;
+
+      if (nextEmail && user.email !== nextEmail) {
+        user.email = nextEmail;
+        shouldSave = true;
+      }
+
+      if (nextUsername && user.username !== nextUsername) {
+        user.username = nextUsername;
+        shouldSave = true;
+      }
+
+      if (shouldSave) {
+        await user.save();
+      }
     }
+
     return user as unknown as User;
   }
 
@@ -55,16 +71,11 @@ export class AuthService {
   }
 
   async verifyGoogleIdToken(idToken: string): Promise<TokenPayload | null> {
-    const audiences = this.getGoogleAudiences();
-    if (!audiences.length) {
-      throw new Error(
-        'GOOGLE_CLIENT_ID or GOOGLE_ALLOWED_CLIENT_IDS must be configured',
-      );
-    }
+    const audience = this.getRequiredGoogleClientId();
 
     const ticket = await this.googleClient.verifyIdToken({
       idToken,
-      audience: audiences.length === 1 ? audiences[0] : audiences,
+      audience,
     });
 
     return ticket.getPayload() || null;
@@ -74,6 +85,10 @@ export class AuthService {
     const payload = await this.verifyGoogleIdToken(idToken);
     if (!payload?.sub || !payload?.email) {
       throw new Error('Google ID token payload is missing required fields');
+    }
+
+    if (payload.email_verified === false) {
+      throw new Error('Google email must be verified');
     }
 
     const displayName =

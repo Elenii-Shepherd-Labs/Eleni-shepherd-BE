@@ -16,7 +16,6 @@ import {
   ApiResponse,
   ApiCookieAuth,
 } from '@nestjs/swagger';
-import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { Request, Response } from 'express';
 import passport from 'passport';
@@ -25,6 +24,7 @@ import { GoogleAuthGuard } from './google-auth.guard';
 const ALLOWED_REDIRECT_PREFIXES = [
   'exp://',
   'elenii://',
+  'elenii-shepherd://',
   'https://',
   'http://localhost',
   'http://127.0.0.1',
@@ -38,7 +38,11 @@ function isSafeRedirect(url: string | undefined): url is string {
 }
 
 function isMobileRedirect(url: string) {
-  return url.startsWith('exp://') || url.startsWith('elenii://');
+  return (
+    url.startsWith('exp://') ||
+    url.startsWith('elenii://') ||
+    url.startsWith('elenii-shepherd://')
+  );
 }
 
 function resolveDirectRedirectUrl(stateParam?: string) {
@@ -111,10 +115,7 @@ function toClientFullname(
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly googleAuthGuard: GoogleAuthGuard,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
   private toMobileUserPayload(user: any) {
     return {
@@ -155,6 +156,18 @@ export class AuthController {
     return this.authService.findUserByMobileAuthToken(mobileToken);
   }
 
+  private buildTokenAuthResponse(user: any) {
+    return {
+      success: true,
+      message: 'Google authentication established',
+      data: {
+        authToken: this.authService.issueMobileAuthToken(user),
+        user: this.toMobileUserPayload(user),
+      },
+      status: 200,
+    };
+  }
+
   @ApiOperation({
     summary: 'Initiate Google OAuth authentication',
     description: `
@@ -166,7 +179,10 @@ so this is more reliable than sessions across redirect roundtrips.
 
 **Frontend Implementation**:
 \`\`\`javascript
-const redirectUrl = AuthSession.makeRedirectUri({ ... });
+const redirectUrl = AuthSession.makeRedirectUri({
+  scheme: 'elenii-shepherd',
+  path: 'auth/callback',
+});
 const authUrl =
   'https://eleni-shepherd-be.onrender.com/auth/google?state=' +
   encodeURIComponent(redirectUrl);
@@ -368,30 +384,24 @@ exchange it for a mobile auth token and user payload.
   }
 
   @ApiOperation({
-    summary: 'Verify a Google ID token for native/mobile sign-in',
+    summary: 'Verify a Google ID token and issue an app auth token',
   })
   @ApiResponse({ status: 200, description: 'Google ID token verified' })
   @ApiResponse({ status: 400, description: 'idToken missing or invalid' })
+  @Post('google/token')
   @Post('mobile/google/verify')
-  async verifyMobileGoogleToken(@Body() body: { idToken?: string }) {
+  async verifyGoogleToken(@Body() body: { idToken?: string }) {
     if (!body?.idToken) {
       throw new BadRequestException('idToken is required');
     }
 
     try {
       const user = await this.authService.validateMobileGoogleUser(body.idToken);
-
-      return {
-        success: true,
-        message: 'Google mobile authentication established',
-        data: {
-          authToken: this.authService.issueMobileAuthToken(user),
-          user: this.toMobileUserPayload(user),
-        },
-        status: 200,
-      };
-    } catch (error) {
-      throw new BadRequestException('Google ID token is invalid');
+      return this.buildTokenAuthResponse(user);
+    } catch (error: any) {
+      throw new BadRequestException(
+        error?.message || 'Google ID token is invalid',
+      );
     }
   }
 

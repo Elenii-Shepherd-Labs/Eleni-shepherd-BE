@@ -4,6 +4,7 @@
 
 ### Authentication
 
+- `POST /auth/google/token`
 - `GET /auth/google`
 - `GET /auth/google/callback`
 - `GET /auth/profile`

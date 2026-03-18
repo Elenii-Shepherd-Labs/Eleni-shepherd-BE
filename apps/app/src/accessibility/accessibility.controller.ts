@@ -38,7 +38,7 @@ const response = await fetch('http://localhost:3000/accessibility/read-aloud', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    text: 'Welcome to Eleni Shepherd. You have 3 new articles.',
+    text: 'Welcome to Eh-lay-ni Shepherd. You have 3 new articles.',
     voice: 'nova',
   }),
   credentials: 'include',
