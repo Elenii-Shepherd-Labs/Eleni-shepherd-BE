@@ -74,15 +74,6 @@ export class ProcessMessageDto {
   context?: string;
 
   @ApiProperty({
-    type: 'string',
-    description: 'Optional current mobile route to ground UI-aware agent actions',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  currentRoute?: string;
-
-  @ApiProperty({
     type: () => ConversationClientStateDto,
     description:
       'Optional client runtime state to ground route-aware, onboarding-aware agent decisions',

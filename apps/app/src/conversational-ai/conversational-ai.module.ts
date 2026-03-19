@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { ConversationalAiController } from './conversational-ai.controller';
 import { LlmModule } from '../llm/llm.module';
+import { ConversationAgentService } from './conversation-agent.service';
 
 @Module({
   imports: [LlmModule],
-  providers: [ConversationService],
+  providers: [ConversationService, ConversationAgentService],
   controllers: [ConversationalAiController],
 })
 export class ConversationalAiModule {}
