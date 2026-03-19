@@ -120,6 +120,7 @@ export class ConversationService {
       content: userMessage,
     };
     session.messages.push(userMsg);
+    const sessionMessagesForAgent = [...session.messages];
 
     session.lastActivityAt = new Date();
     session.interrupted = false;
@@ -131,7 +132,7 @@ export class ConversationService {
     const agentResult = await this.conversationAgentService.runTurn({
       sessionId,
       userMessage,
-      sessionMessages: session.messages,
+      sessionMessages: sessionMessagesForAgent,
       sessionContext: session.context,
       clientState,
       extraContext,
