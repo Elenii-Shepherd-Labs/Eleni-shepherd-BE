@@ -16,6 +16,20 @@ type ConversationClientAction =
   | { type: 'set_listen_mode'; enabled: boolean }
   | { type: 'stop_audio' };
 
+type ConversationClientState = {
+  currentRoute?: string;
+  onboardingPhase?: 'pre_auth' | 'awaiting_name' | 'creating_profile' | 'assistant';
+  hasVerifiedIdentity?: boolean;
+  isAlwaysListen?: boolean;
+};
+
+type ConversationAgentState = {
+  mode: 'onboarding' | 'assistant';
+  workflow: 'pre_auth' | 'awaiting_name' | 'creating_profile' | 'assistant';
+  currentRoute?: string;
+  shouldKeepListening: boolean;
+};
+
 @Injectable()
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
@@ -73,7 +87,7 @@ export class ConversationService {
 
   private deriveClientActions(
     userMessage: string,
-    currentRoute?: string,
+    clientState?: ConversationClientState,
   ): ConversationClientAction[] {
     const normalized = this.normalizeUtterance(userMessage);
     if (!normalized) {
@@ -83,7 +97,7 @@ export class ConversationService {
     const actions: ConversationClientAction[] = [];
     const hasAny = (...phrases: string[]) =>
       phrases.some((phrase) => normalized.includes(phrase));
-    const route = currentRoute?.trim() || '';
+    const route = clientState?.currentRoute?.trim() || '';
 
     if (hasAny('stop', 'quiet', 'pause')) {
       actions.push({ type: 'stop_audio' });
@@ -208,13 +222,31 @@ export class ConversationService {
 
   private buildEffectiveContext(
     sessionContext: string,
-    currentRoute?: string,
+    clientState?: ConversationClientState,
     extraContext?: string,
   ) {
     const contextParts = [sessionContext];
 
-    if (currentRoute) {
-      contextParts.push(`Current mobile route: ${currentRoute}.`);
+    if (clientState?.currentRoute) {
+      contextParts.push(`Current mobile route: ${clientState.currentRoute}.`);
+    }
+
+    if (clientState?.onboardingPhase) {
+      contextParts.push(`Current onboarding phase: ${clientState.onboardingPhase}.`);
+    }
+
+    if (typeof clientState?.hasVerifiedIdentity === 'boolean') {
+      contextParts.push(
+        `Verified identity present: ${clientState.hasVerifiedIdentity ? 'yes' : 'no'}.`,
+      );
+    }
+
+    if (typeof clientState?.isAlwaysListen === 'boolean') {
+      contextParts.push(
+        `Listen mode: ${
+          clientState.isAlwaysListen ? 'always listen' : 'tap to listen'
+        }.`,
+      );
     }
 
     if (extraContext) {
@@ -222,6 +254,21 @@ export class ConversationService {
     }
 
     return contextParts.filter(Boolean).join('\n');
+  }
+
+  private buildAgentState(
+    clientState?: ConversationClientState,
+  ): ConversationAgentState {
+    const workflow = clientState?.onboardingPhase || 'assistant';
+    return {
+      mode: workflow === 'assistant' ? 'assistant' : 'onboarding',
+      workflow,
+      currentRoute: clientState?.currentRoute,
+      shouldKeepListening:
+        workflow === 'pre_auth' ||
+        workflow === 'awaiting_name' ||
+        Boolean(clientState?.isAlwaysListen),
+    };
   }
 
   async initializeSession(
@@ -274,7 +321,7 @@ export class ConversationService {
   async processMessage(
     sessionId: string,
     userMessage: string,
-    currentRoute?: string,
+    clientState?: ConversationClientState,
     extraContext?: string,
   ): Promise<IAppResponse> {
     const rawResp = (await this.getSession(sessionId)) as IAppResponse;
@@ -296,15 +343,16 @@ export class ConversationService {
       `Processing message for session ${sessionId}: ${userMessage}`,
     );
 
-    const actions = this.deriveClientActions(userMessage, currentRoute);
+    const actions = this.deriveClientActions(userMessage, clientState);
     const actionAcknowledgement = this.buildActionAcknowledgement(actions);
+    const agentState = this.buildAgentState(clientState);
 
     let aiText = actionAcknowledgement || '';
 
     if (!this.shouldShortCircuitToActionResponse(userMessage, actions)) {
       const aiResponseResp = await this.llmService.generateResponse(
         session.messages,
-        this.buildEffectiveContext(session.context, currentRoute, extraContext),
+        this.buildEffectiveContext(session.context, clientState, extraContext),
       );
       aiText =
         (aiResponseResp.data as { response?: string } | null)?.response ||
@@ -329,7 +377,7 @@ export class ConversationService {
     return createAppResponse(
       true,
       'Message processed',
-      { response: aiText, sessionId, actions },
+      { response: aiText, sessionId, actions, agent: agentState },
       200,
     );
   }

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsObject } from 'class-validator';
 
 export class CreateSessionDto {
   @ApiProperty({
@@ -10,6 +10,49 @@ export class CreateSessionDto {
   @IsOptional()
   @IsString()
   userId?: string;
+}
+
+export class ConversationClientStateDto {
+  @ApiProperty({
+    type: 'string',
+    required: false,
+    example: 'Home',
+  })
+  @IsOptional()
+  @IsString()
+  currentRoute?: string;
+
+  @ApiProperty({
+    type: 'string',
+    required: false,
+    example: 'assistant',
+    enum: ['pre_auth', 'awaiting_name', 'creating_profile', 'assistant'],
+  })
+  @IsOptional()
+  @IsString()
+  onboardingPhase?:
+    | 'pre_auth'
+    | 'awaiting_name'
+    | 'creating_profile'
+    | 'assistant';
+
+  @ApiProperty({
+    type: 'boolean',
+    required: false,
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  hasVerifiedIdentity?: boolean;
+
+  @ApiProperty({
+    type: 'boolean',
+    required: false,
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isAlwaysListen?: boolean;
 }
 
 export class ProcessMessageDto {
@@ -38,6 +81,16 @@ export class ProcessMessageDto {
   @IsOptional()
   @IsString()
   currentRoute?: string;
+
+  @ApiProperty({
+    type: () => ConversationClientStateDto,
+    description:
+      'Optional client runtime state to ground route-aware, onboarding-aware agent decisions',
+    required: false,
+  })
+  @IsOptional()
+  @IsObject()
+  clientState?: ConversationClientStateDto;
 }
 
 export class AddContextDto {

@@ -260,7 +260,7 @@ console.log('AI Response:', result.data.response);
     const resp = await this.conversationService.processMessage(
       sessionId,
       processMessageDto.userMessage,
-      processMessageDto.currentRoute,
+      processMessageDto.clientState,
       processMessageDto.context,
     );
     return res.status(resp.status || 200).json(resp);
