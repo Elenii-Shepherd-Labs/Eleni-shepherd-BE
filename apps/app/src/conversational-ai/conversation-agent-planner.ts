@@ -1,7 +1,7 @@
 import {
   ConversationAgentState,
-  ConversationClientAction,
   ConversationClientState,
+  ConversationToolCall,
 } from './interfaces/conversation-agent.interface';
 
 type IntentPlanner = {
@@ -9,10 +9,10 @@ type IntentPlanner = {
     normalized: string,
     clientState?: ConversationClientState,
   ) => boolean;
-  buildActions: (
+  buildToolCalls: (
     normalized: string,
     clientState?: ConversationClientState,
-  ) => ConversationClientAction[];
+  ) => ConversationToolCall[];
 };
 
 function hasAny(normalized: string, ...phrases: string[]) {
@@ -39,41 +39,40 @@ function isGoogleAuthIntent(normalized: string) {
   );
 }
 
-function buildNewsActions(
+function buildNewsToolCalls(
   normalized: string,
-  clientState?: ConversationClientState,
+  _clientState?: ConversationClientState,
 ) {
   if (hasAny(normalized, 'open', 'go', 'navigate')) {
-    return [{ type: 'navigate', screen: 'News' } satisfies ConversationClientAction];
+    return [{ name: 'navigate', args: { screen: 'News' } } satisfies ConversationToolCall];
   }
 
-  const actions: ConversationClientAction[] = [];
-  if (clientState?.currentRoute?.trim() !== 'News') {
-    actions.push({ type: 'navigate', screen: 'News' });
-  }
-  actions.push({ type: 'read_news', category: 'news' });
-  return actions;
+  return [
+    {
+      name: 'read_news',
+      args: { category: 'news', openScreen: true },
+    } satisfies ConversationToolCall,
+  ];
 }
 
-function buildRadioActions(
+function buildRadioToolCalls(
   normalized: string,
-  clientState?: ConversationClientState,
+  _clientState?: ConversationClientState,
 ) {
   if (hasAny(normalized, 'open', 'go', 'navigate')) {
-    return [{ type: 'navigate', screen: 'Radio' } satisfies ConversationClientAction];
-  }
-
-  const actions: ConversationClientAction[] = [];
-  if (clientState?.currentRoute?.trim() !== 'Radio') {
-    actions.push({ type: 'navigate', screen: 'Radio' });
+    return [{ name: 'navigate', args: { screen: 'Radio' } } satisfies ConversationToolCall];
   }
 
   let genre = 'Nigeria';
   if (hasAny(normalized, 'jazz')) genre = 'Jazz';
   else if (hasAny(normalized, 'gospel')) genre = 'Gospel';
 
-  actions.push({ type: 'play_radio', genre });
-  return actions;
+  return [
+    {
+      name: 'play_radio',
+      args: { genre, openScreen: true },
+    } satisfies ConversationToolCall,
+  ];
 }
 
 const intentPlanners: IntentPlanner[] = [
@@ -84,11 +83,11 @@ const intentPlanners: IntentPlanner[] = [
           !clientState?.hasVerifiedIdentity &&
           isGoogleAuthIntent(normalized),
       ),
-    buildActions: () => [{ type: 'start_google_auth' }],
+    buildToolCalls: () => [{ name: 'start_google_auth', args: {} }],
   },
   {
     matches: (normalized) => hasAny(normalized, 'stop', 'quiet', 'pause'),
-    buildActions: () => [{ type: 'stop_audio' }],
+    buildToolCalls: () => [{ name: 'stop_audio', args: {} }],
   },
   {
     matches: (normalized) =>
@@ -99,38 +98,40 @@ const intentPlanners: IntentPlanner[] = [
         'always listen',
         'tap to listen',
       ),
-    buildActions: (normalized) => [
+    buildToolCalls: (normalized) => [
       {
-        type: 'set_listen_mode',
-        enabled: hasAny(normalized, 'always'),
+        name: 'set_listen_mode',
+        args: { enabled: hasAny(normalized, 'always') },
       },
     ],
   },
   {
     matches: (normalized) => hasAny(normalized, 'settings'),
-    buildActions: () => [{ type: 'navigate', screen: 'Settings' }],
+    buildToolCalls: () => [{ name: 'navigate', args: { screen: 'Settings' } }],
   },
   {
     matches: (normalized) => hasAny(normalized, 'home', 'dashboard'),
-    buildActions: () => [{ type: 'navigate', screen: 'Home' }],
+    buildToolCalls: () => [{ name: 'navigate', args: { screen: 'Home' } }],
   },
   {
     matches: (normalized) => hasAny(normalized, 'news', 'headline', 'headlines'),
-    buildActions: buildNewsActions,
+    buildToolCalls: buildNewsToolCalls,
   },
   {
     matches: (normalized) => hasAny(normalized, 'radio', 'station', 'music'),
-    buildActions: buildRadioActions,
+    buildToolCalls: buildRadioToolCalls,
   },
   {
     matches: (normalized) =>
       hasAny(normalized, 'scan', 'what is this', 'look at', 'read this'),
-    buildActions: () => [{ type: 'vision_scan' }],
+    buildToolCalls: () => [{ name: 'vision_scan', args: {} }],
   },
   {
     matches: (normalized) =>
       hasAny(normalized, 'navigate', 'walk', 'path', 'ahead', 'route'),
-    buildActions: () => [{ type: 'navigate', screen: 'Navigation' }],
+    buildToolCalls: () => [
+      { name: 'navigate', args: { screen: 'Navigation' } },
+    ],
   },
 ];
 
@@ -142,10 +143,10 @@ export function normalizeUtterance(text: string) {
     .trim();
 }
 
-export function deriveClientActions(
+export function deriveToolCalls(
   userMessage: string,
   clientState?: ConversationClientState,
-): ConversationClientAction[] {
+): ConversationToolCall[] {
   const normalized = normalizeUtterance(userMessage);
   if (!normalized) {
     return [];
@@ -155,49 +156,14 @@ export function deriveClientActions(
     candidate.matches(normalized, clientState),
   );
 
-  return planner?.buildActions(normalized, clientState) || [];
+  return planner?.buildToolCalls(normalized, clientState) || [];
 }
 
-export function buildActionAcknowledgement(
-  actions: ConversationClientAction[],
-): string | null {
-  const primary = actions[0];
-  if (!primary) {
-    return null;
-  }
-
-  switch (primary.type) {
-    case 'stop_audio':
-      return 'Stopping audio now.';
-    case 'set_listen_mode':
-      return `Switched to ${
-        primary.enabled ? 'always listen' : 'tap to listen'
-      } mode.`;
-    case 'navigate':
-      if (primary.screen === 'Navigation') {
-        return 'Opening navigation now.';
-      }
-      return `Opening ${primary.screen.toLowerCase()} now.`;
-    case 'play_radio':
-      return `Opening radio and tuning into ${
-        primary.genre || 'Nigeria'
-      } stations.`;
-    case 'read_news':
-      return 'Opening news and reading the latest headlines.';
-    case 'vision_scan':
-      return 'Starting a quick scan now.';
-    case 'start_google_auth':
-      return 'Okay. Opening Google sign in now.';
-    default:
-      return null;
-  }
-}
-
-export function shouldShortCircuitToActionResponse(
+export function shouldShortCircuitToToolResponse(
   userMessage: string,
-  actions: ConversationClientAction[],
+  toolCalls: ConversationToolCall[],
 ) {
-  if (actions.length === 0) {
+  if (toolCalls.length === 0) {
     return false;
   }
 

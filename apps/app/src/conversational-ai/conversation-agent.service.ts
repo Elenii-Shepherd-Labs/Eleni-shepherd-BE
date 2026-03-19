@@ -12,15 +12,16 @@ import {
   ConversationAgentState,
   ConversationClientAction,
   ConversationClientState,
+  ConversationToolCall,
 } from './interfaces/conversation-agent.interface';
 import {
-  buildActionAcknowledgement,
   buildAgentState,
   buildEffectiveContext,
-  deriveClientActions,
-  shouldShortCircuitToActionResponse,
+  deriveToolCalls,
+  shouldShortCircuitToToolResponse,
 } from './conversation-agent-planner';
 import { ConversationCheckpointService } from './conversation-checkpoint.service';
+import { executeConversationToolCalls } from './conversation-agent-tools';
 
 const ConversationGraphState = Annotation.Root({
   sessionId: Annotation<string>(),
@@ -29,6 +30,7 @@ const ConversationGraphState = Annotation.Root({
   sessionContext: Annotation<string>(),
   clientState: Annotation<ConversationClientState | undefined>(),
   extraContext: Annotation<string | undefined>(),
+  toolCalls: Annotation<ConversationToolCall[]>(),
   actions: Annotation<ConversationClientAction[]>(),
   actionAcknowledgement: Annotation<string | null>(),
   shouldGenerateResponse: Annotation<boolean>(),
@@ -52,12 +54,14 @@ export class ConversationAgentService {
   private buildGraph() {
     return new StateGraph(ConversationGraphState)
       .addNode('plan_turn', async (state) => this.planTurn(state))
+      .addNode('execute_tools', async (state) => this.executeTools(state))
       .addNode('generate_response', async (state) =>
         this.generateResponse(state),
       )
       .addNode('finalize_turn', async (state) => this.finalizeTurn(state))
       .addEdge(START, 'plan_turn')
-      .addConditionalEdges('plan_turn', (state) =>
+      .addEdge('plan_turn', 'execute_tools')
+      .addConditionalEdges('execute_tools', (state) =>
         state.shouldGenerateResponse ? 'generate_response' : 'finalize_turn',
       )
       .addEdge('generate_response', 'finalize_turn')
@@ -91,18 +95,23 @@ export class ConversationAgentService {
   }
 
   private async planTurn(state: ConversationGraphStateType) {
-    const actions = deriveClientActions(state.userMessage, state.clientState);
-    const actionAcknowledgement = buildActionAcknowledgement(actions);
+    const toolCalls = deriveToolCalls(state.userMessage, state.clientState);
 
     return {
-      actions,
-      actionAcknowledgement,
-      shouldGenerateResponse: !shouldShortCircuitToActionResponse(
+      toolCalls,
+      shouldGenerateResponse: !shouldShortCircuitToToolResponse(
         state.userMessage,
-        actions,
+        toolCalls,
       ),
       agentState: buildAgentState(state.clientState),
     };
+  }
+
+  private async executeTools(state: ConversationGraphStateType) {
+    return executeConversationToolCalls(
+      state.toolCalls || [],
+      state.clientState,
+    );
   }
 
   private async generateResponse(state: ConversationGraphStateType) {

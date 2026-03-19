@@ -7,6 +7,15 @@ export type ConversationClientAction =
   | { type: 'stop_audio' }
   | { type: 'start_google_auth' };
 
+export type ConversationToolCall =
+  | { name: 'navigate'; args: { screen: string } }
+  | { name: 'play_radio'; args: { genre?: string; openScreen?: boolean } }
+  | { name: 'read_news'; args: { category?: string; openScreen?: boolean } }
+  | { name: 'vision_scan'; args: Record<string, never> }
+  | { name: 'set_listen_mode'; args: { enabled: boolean } }
+  | { name: 'stop_audio'; args: Record<string, never> }
+  | { name: 'start_google_auth'; args: Record<string, never> };
+
 export type ConversationClientState = {
   currentRoute?: string;
   onboardingPhase?: 'pre_auth' | 'awaiting_name' | 'creating_profile' | 'assistant';
