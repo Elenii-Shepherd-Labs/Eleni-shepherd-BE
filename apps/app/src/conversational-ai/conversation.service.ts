@@ -193,6 +193,7 @@ export class ConversationService {
     );
     await this.cacheManager.del(this.sessionKey(sessionId));
     await this.removeActiveSessionId(sessionId);
+    await this.conversationAgentService.deleteThreadState(sessionId);
     return createAppResponse(true, 'Session ended', null, 200);
   }
 

@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import {
   Annotation,
   END,
-  MemorySaver,
   START,
   StateGraph,
 } from '@langchain/langgraph';
@@ -21,6 +20,7 @@ import {
   deriveClientActions,
   shouldShortCircuitToActionResponse,
 } from './conversation-agent-planner';
+import { ConversationCheckpointService } from './conversation-checkpoint.service';
 
 const ConversationGraphState = Annotation.Root({
   sessionId: Annotation<string>(),
@@ -40,21 +40,30 @@ type ConversationGraphStateType = typeof ConversationGraphState.State;
 
 @Injectable()
 export class ConversationAgentService {
-  private readonly graph = new StateGraph(ConversationGraphState)
-    .addNode('plan_turn', async (state) => this.planTurn(state))
-    .addNode('generate_response', async (state) =>
-      this.generateResponse(state),
-    )
-    .addNode('finalize_turn', async (state) => this.finalizeTurn(state))
-    .addEdge(START, 'plan_turn')
-    .addConditionalEdges('plan_turn', (state) =>
-      state.shouldGenerateResponse ? 'generate_response' : 'finalize_turn',
-    )
-    .addEdge('generate_response', 'finalize_turn')
-    .addEdge('finalize_turn', END)
-    .compile({ checkpointer: new MemorySaver() });
+  private readonly graph: ReturnType<ConversationAgentService['buildGraph']>;
 
-  constructor(private readonly llmService: LlmService) {}
+  constructor(
+    private readonly llmService: LlmService,
+    private readonly checkpointService: ConversationCheckpointService,
+  ) {
+    this.graph = this.buildGraph();
+  }
+
+  private buildGraph() {
+    return new StateGraph(ConversationGraphState)
+      .addNode('plan_turn', async (state) => this.planTurn(state))
+      .addNode('generate_response', async (state) =>
+        this.generateResponse(state),
+      )
+      .addNode('finalize_turn', async (state) => this.finalizeTurn(state))
+      .addEdge(START, 'plan_turn')
+      .addConditionalEdges('plan_turn', (state) =>
+        state.shouldGenerateResponse ? 'generate_response' : 'finalize_turn',
+      )
+      .addEdge('generate_response', 'finalize_turn')
+      .addEdge('finalize_turn', END)
+      .compile({ checkpointer: this.checkpointService });
+  }
 
   async runTurn(input: {
     sessionId: string;
@@ -64,9 +73,9 @@ export class ConversationAgentService {
     clientState?: ConversationClientState;
     extraContext?: string;
   }): Promise<ConversationAgentResult> {
-    const result = await this.graph.invoke(input, {
+    const result = (await this.graph.invoke(input, {
       configurable: { thread_id: input.sessionId },
-    });
+    })) as ConversationGraphStateType;
 
     return {
       response:
@@ -75,6 +84,10 @@ export class ConversationAgentService {
       actions: result.actions || [],
       agent: result.agentState,
     };
+  }
+
+  async deleteThreadState(sessionId: string) {
+    await this.checkpointService.deleteThread(sessionId);
   }
 
   private async planTurn(state: ConversationGraphStateType) {

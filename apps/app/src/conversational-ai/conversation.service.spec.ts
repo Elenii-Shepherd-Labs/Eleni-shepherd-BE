@@ -11,6 +11,7 @@ describe('ConversationService', () => {
   };
   let conversationAgentService: {
     runTurn: jest.Mock;
+    deleteThreadState: jest.Mock;
   };
 
   beforeEach(() => {
@@ -27,6 +28,7 @@ describe('ConversationService', () => {
 
     conversationAgentService = {
       runTurn: jest.fn(),
+      deleteThreadState: jest.fn(),
     };
 
     service = new ConversationService(
@@ -154,5 +156,17 @@ describe('ConversationService', () => {
       role: 'assistant',
       content: 'Fresh response',
     });
+  });
+
+  it('clears cached session data and graph state when ending a session', async () => {
+    await service.initializeSession('session-end', 'user-1');
+
+    const response = await service.endSession('session-end');
+
+    expect(response.success).toBe(true);
+    expect(cacheStore.has('conversation:session:session-end')).toBe(false);
+    expect(conversationAgentService.deleteThreadState).toHaveBeenCalledWith(
+      'session-end',
+    );
   });
 });

@@ -1,17 +1,24 @@
 import { ConversationAgentService } from './conversation-agent.service';
 import { LlmService } from '../llm/llm.service';
 import { Message } from '../llm/dto';
+import { ConversationCheckpointService } from './conversation-checkpoint.service';
+import { MemorySaver } from '@langchain/langgraph';
 
 describe('ConversationAgentService', () => {
   let service: ConversationAgentService;
   let llmService: { generateResponse: jest.Mock };
+  let checkpointService: MemorySaver;
 
   beforeEach(() => {
     llmService = {
       generateResponse: jest.fn(),
     };
+    checkpointService = new MemorySaver();
 
-    service = new ConversationAgentService(llmService as unknown as LlmService);
+    service = new ConversationAgentService(
+      llmService as unknown as LlmService,
+      checkpointService as unknown as ConversationCheckpointService,
+    );
   });
 
   it('returns a Google auth action during pre-auth onboarding', async () => {
@@ -100,5 +107,13 @@ describe('ConversationAgentService', () => {
       currentRoute: 'Home',
       shouldKeepListening: true,
     });
+  });
+
+  it('delegates thread cleanup to the checkpoint service', async () => {
+    const deleteThreadSpy = jest.spyOn(checkpointService, 'deleteThread');
+
+    await service.deleteThreadState('session-cleanup');
+
+    expect(deleteThreadSpy).toHaveBeenCalledWith('session-cleanup');
   });
 });
