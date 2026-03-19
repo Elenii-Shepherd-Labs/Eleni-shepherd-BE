@@ -29,6 +29,15 @@ export class ProcessMessageDto {
   @IsOptional()
   @IsString()
   context?: string;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'Optional current mobile route to ground UI-aware agent actions',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  currentRoute?: string;
 }
 
 export class AddContextDto {

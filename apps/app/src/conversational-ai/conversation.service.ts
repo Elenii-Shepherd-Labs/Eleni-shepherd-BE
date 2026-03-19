@@ -8,6 +8,14 @@ import { Types } from 'mongoose';
 import { IAppResponse } from '@app/common/interfaces/response.interface';
 import { createAppResponse } from '@app/common/utils/response';
 
+type ConversationClientAction =
+  | { type: 'navigate'; screen: string }
+  | { type: 'play_radio'; genre?: string }
+  | { type: 'read_news'; category?: string }
+  | { type: 'vision_scan' }
+  | { type: 'set_listen_mode'; enabled: boolean }
+  | { type: 'stop_audio' };
+
 @Injectable()
 export class ConversationService {
   private readonly logger = new Logger(ConversationService.name);
@@ -53,6 +61,167 @@ export class ConversationService {
         ? new Date(session.lastActivityAt)
         : new Date(),
     } as ConversationSession;
+  }
+
+  private normalizeUtterance(text: string) {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s']/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private deriveClientActions(
+    userMessage: string,
+    currentRoute?: string,
+  ): ConversationClientAction[] {
+    const normalized = this.normalizeUtterance(userMessage);
+    if (!normalized) {
+      return [];
+    }
+
+    const actions: ConversationClientAction[] = [];
+    const hasAny = (...phrases: string[]) =>
+      phrases.some((phrase) => normalized.includes(phrase));
+    const route = currentRoute?.trim() || '';
+
+    if (hasAny('stop', 'quiet', 'pause')) {
+      actions.push({ type: 'stop_audio' });
+      return actions;
+    }
+
+    if (hasAny('switch mode', 'listen mode', 'always listen', 'tap to listen')) {
+      actions.push({
+        type: 'set_listen_mode',
+        enabled: hasAny('always'),
+      });
+      return actions;
+    }
+
+    if (hasAny('settings')) {
+      actions.push({ type: 'navigate', screen: 'Settings' });
+      return actions;
+    }
+
+    if (hasAny('home', 'dashboard')) {
+      actions.push({ type: 'navigate', screen: 'Home' });
+      return actions;
+    }
+
+    if (hasAny('news', 'headline', 'headlines')) {
+      if (hasAny('open', 'go', 'navigate')) {
+        actions.push({ type: 'navigate', screen: 'News' });
+      } else {
+        if (route !== 'News') {
+          actions.push({ type: 'navigate', screen: 'News' });
+        }
+        actions.push({ type: 'read_news', category: 'news' });
+      }
+      return actions;
+    }
+
+    if (hasAny('radio', 'station', 'music')) {
+      if (hasAny('open', 'go', 'navigate')) {
+        actions.push({ type: 'navigate', screen: 'Radio' });
+      } else {
+        if (route !== 'Radio') {
+          actions.push({ type: 'navigate', screen: 'Radio' });
+        }
+
+        let genre = 'Nigeria';
+        if (hasAny('jazz')) genre = 'Jazz';
+        else if (hasAny('gospel')) genre = 'Gospel';
+
+        actions.push({ type: 'play_radio', genre });
+      }
+      return actions;
+    }
+
+    if (hasAny('scan', 'what is this', 'look at', 'read this')) {
+      actions.push({ type: 'vision_scan' });
+      return actions;
+    }
+
+    if (hasAny('navigate', 'walk', 'path', 'ahead', 'route')) {
+      actions.push({ type: 'navigate', screen: 'Navigation' });
+      return actions;
+    }
+
+    return actions;
+  }
+
+  private buildActionAcknowledgement(
+    actions: ConversationClientAction[],
+  ): string | null {
+    const primary = actions[0];
+    if (!primary) {
+      return null;
+    }
+
+    switch (primary.type) {
+      case 'stop_audio':
+        return 'Stopping audio now.';
+      case 'set_listen_mode':
+        return `Switched to ${
+          primary.enabled ? 'always listen' : 'tap to listen'
+        } mode.`;
+      case 'navigate':
+        if (primary.screen === 'Navigation') {
+          return 'Opening navigation now.';
+        }
+        return `Opening ${primary.screen.toLowerCase()} now.`;
+      case 'play_radio':
+        return `Opening radio and tuning into ${
+          primary.genre || 'Nigeria'
+        } stations.`;
+      case 'read_news':
+        return 'Opening news and reading the latest headlines.';
+      case 'vision_scan':
+        return 'Starting a quick scan now.';
+      default:
+        return null;
+    }
+  }
+
+  private shouldShortCircuitToActionResponse(
+    userMessage: string,
+    actions: ConversationClientAction[],
+  ) {
+    if (actions.length === 0) {
+      return false;
+    }
+
+    const normalized = this.normalizeUtterance(userMessage);
+    const words = normalized.split(' ').filter(Boolean);
+    return (
+      words.length <= 8 ||
+      normalized.startsWith('open ') ||
+      normalized.startsWith('go ') ||
+      normalized.startsWith('play ') ||
+      normalized.startsWith('read ') ||
+      normalized.startsWith('scan ') ||
+      normalized.startsWith('navigate ') ||
+      normalized.startsWith('stop ') ||
+      normalized.startsWith('switch ')
+    );
+  }
+
+  private buildEffectiveContext(
+    sessionContext: string,
+    currentRoute?: string,
+    extraContext?: string,
+  ) {
+    const contextParts = [sessionContext];
+
+    if (currentRoute) {
+      contextParts.push(`Current mobile route: ${currentRoute}.`);
+    }
+
+    if (extraContext) {
+      contextParts.push(extraContext);
+    }
+
+    return contextParts.filter(Boolean).join('\n');
   }
 
   async initializeSession(
@@ -105,6 +274,8 @@ export class ConversationService {
   async processMessage(
     sessionId: string,
     userMessage: string,
+    currentRoute?: string,
+    extraContext?: string,
   ): Promise<IAppResponse> {
     const rawResp = (await this.getSession(sessionId)) as IAppResponse;
     if (!rawResp.success) return rawResp;
@@ -125,14 +296,21 @@ export class ConversationService {
       `Processing message for session ${sessionId}: ${userMessage}`,
     );
 
-    // Get AI response
-    const aiResponseResp = await this.llmService.generateResponse(
-      session.messages,
-      session.context,
-    );
-    const aiText =
-      (aiResponseResp.data as { response?: string } | null)?.response ||
-      'I apologize, but I could not generate a response.';
+    const actions = this.deriveClientActions(userMessage, currentRoute);
+    const actionAcknowledgement = this.buildActionAcknowledgement(actions);
+
+    let aiText = actionAcknowledgement || '';
+
+    if (!this.shouldShortCircuitToActionResponse(userMessage, actions)) {
+      const aiResponseResp = await this.llmService.generateResponse(
+        session.messages,
+        this.buildEffectiveContext(session.context, currentRoute, extraContext),
+      );
+      aiText =
+        (aiResponseResp.data as { response?: string } | null)?.response ||
+        actionAcknowledgement ||
+        'I apologize, but I could not generate a response.';
+    }
 
     // Add AI response
     const assistantMsg: Message = {
@@ -151,7 +329,7 @@ export class ConversationService {
     return createAppResponse(
       true,
       'Message processed',
-      { response: aiText, sessionId },
+      { response: aiText, sessionId, actions },
       200,
     );
   }

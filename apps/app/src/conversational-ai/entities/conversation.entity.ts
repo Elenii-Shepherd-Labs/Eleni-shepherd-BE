@@ -6,7 +6,6 @@ import { Types } from 'mongoose';
  */
 export class ConversationSessionEntity {
   id: string;
-  // reference to User._id
   userId?: Types.ObjectId | string;
   messages: ConversationMessageEntity[];
   context?: string;
