@@ -187,4 +187,50 @@ describe('ConversationToolRouterService', () => {
       source: 'model',
     });
   });
+
+  it('accepts backend-owned telehealth tools from the planner', async () => {
+    llmService.isProviderConfigured.mockReturnValue(true);
+    llmService.generateToolPlanningResponse.mockResolvedValue({
+      success: true,
+      data: {
+        response: JSON.stringify({
+          toolCalls: [
+            {
+              name: 'check_symptoms',
+              args: {
+                symptoms: 'I have a fever and headache',
+              },
+            },
+          ],
+          shouldGenerateResponse: true,
+        }),
+      },
+    });
+
+    const result = await service.routeTurn({
+      userMessage: 'I have a fever and headache',
+      sessionMessages: [
+        { role: 'user', content: 'I have a fever and headache' },
+      ],
+      sessionContext: '',
+      clientState: {
+        onboardingPhase: 'assistant',
+        currentRoute: 'Home',
+        hasVerifiedIdentity: true,
+      },
+    });
+
+    expect(result).toEqual({
+      toolCalls: [
+        {
+          name: 'check_symptoms',
+          args: {
+            symptoms: 'I have a fever and headache',
+          },
+        },
+      ],
+      shouldGenerateResponse: true,
+      source: 'model',
+    });
+  });
 });

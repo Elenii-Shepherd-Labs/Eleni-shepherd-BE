@@ -20,7 +20,9 @@ export type ConversationToolCall =
   | { name: 'open_tester_feedback'; args: Record<string, never> }
   | { name: 'check_tester_updates'; args: Record<string, never> }
   | { name: 'get_subscription_status'; args: Record<string, never> }
-  | { name: 'get_allowed_languages'; args: Record<string, never> };
+  | { name: 'get_allowed_languages'; args: Record<string, never> }
+  | { name: 'get_health_reminders'; args: Record<string, never> }
+  | { name: 'check_symptoms'; args: { symptoms: string } };
 
 export type ConversationClientState = {
   currentRoute?: string;

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { LANGUAGE_NAMES } from '../subscription/subscription.constants';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { TelehealthService } from '../telehealth/telehealth.service';
 import {
   ConversationClientAction,
   ConversationClientState,
@@ -15,7 +16,10 @@ type ExecutedToolCalls = {
 
 @Injectable()
 export class ConversationAgentToolExecutorService {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    private readonly telehealthService: TelehealthService,
+  ) {}
 
   async executeToolCalls(
     toolCalls: ConversationToolCall[],
@@ -157,6 +161,53 @@ export class ConversationAgentToolExecutorService {
           summary: `allowed languages are ${languageNames.join(', ')} on the ${tier} tier`,
         };
       }
+      case 'get_health_reminders': {
+        if (!options.userId) {
+          return {
+            actions: [],
+            summary:
+              'no authenticated user is available for reminder lookup yet',
+          };
+        }
+
+        const reminderResponse = await this.telehealthService.getRemindersByUser(
+          options.userId,
+        );
+        const reminders = Array.isArray(reminderResponse.data)
+          ? reminderResponse.data
+          : [];
+
+        if (!reminders.length) {
+          return {
+            actions: [],
+            summary: 'no active health reminders were found',
+          };
+        }
+
+        const formattedReminders = reminders
+          .slice(0, 3)
+          .map((reminder: any) => `${reminder.title} at ${reminder.time}`)
+          .join(', ');
+
+        return {
+          actions: [],
+          summary: `health reminders include ${formattedReminders}`,
+        };
+      }
+      case 'check_symptoms': {
+        const symptomResponse = await this.telehealthService.checkSymptoms({
+          symptoms: toolCall.args.symptoms,
+          userId: options.userId || undefined,
+        });
+        const guidance =
+          symptomResponse.data?.guidance ||
+          'symptom guidance is unavailable right now';
+
+        return {
+          actions: [],
+          summary: `symptom guidance: ${guidance}`,
+        };
+      }
       default:
         return unreachableTool(toolCall);
     }
@@ -200,6 +251,10 @@ function buildActionAcknowledgement(
       return 'Checking your subscription details now.';
     case 'get_allowed_languages':
       return 'Checking your available languages now.';
+    case 'get_health_reminders':
+      return 'Checking your health reminders now.';
+    case 'check_symptoms':
+      return 'Checking your symptoms now.';
     default:
       return unreachableTool(toolCall);
   }

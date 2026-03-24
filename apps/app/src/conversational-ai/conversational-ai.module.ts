@@ -7,9 +7,10 @@ import { ConversationCheckpointService } from './conversation-checkpoint.service
 import { ConversationToolRouterService } from './conversation-tool-router.service';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { ConversationAgentToolExecutorService } from './conversation-agent-tool-executor.service';
+import { TelehealthModule } from '../telehealth/telehealth.module';
 
 @Module({
-  imports: [LlmModule, SubscriptionModule],
+  imports: [LlmModule, SubscriptionModule, TelehealthModule],
   providers: [
     ConversationService,
     ConversationAgentService,

@@ -6,15 +6,24 @@ describe('ConversationAgentToolExecutorService', () => {
     getUserTier: jest.Mock;
     getAllowedLanguages: jest.Mock;
   };
+  let telehealthService: {
+    getRemindersByUser: jest.Mock;
+    checkSymptoms: jest.Mock;
+  };
 
   beforeEach(() => {
     subscriptionService = {
       getUserTier: jest.fn().mockResolvedValue('free'),
       getAllowedLanguages: jest.fn().mockReturnValue(['en']),
     };
+    telehealthService = {
+      getRemindersByUser: jest.fn(),
+      checkSymptoms: jest.fn(),
+    };
 
     service = new ConversationAgentToolExecutorService(
       subscriptionService as never,
+      telehealthService as never,
     );
   });
 
@@ -118,5 +127,63 @@ describe('ConversationAgentToolExecutorService', () => {
 
     expect(result.actions).toEqual([{ type: 'open_tester_feedback' }]);
     expect(result.actionAcknowledgement).toBe('Opening tester feedback now.');
+  });
+
+  it('returns reminder summaries from the telehealth service', async () => {
+    telehealthService.getRemindersByUser.mockResolvedValue({
+      data: [
+        { title: 'Malaria Prophylaxis', time: '14:00' },
+        { title: 'Clinic Visit', time: '16:30' },
+      ],
+    });
+
+    const result = await service.executeToolCalls(
+      [
+        {
+          name: 'get_health_reminders',
+          args: {},
+        },
+      ],
+      {
+        userId: 'user-123',
+      },
+    );
+
+    expect(result.actions).toEqual([]);
+    expect(result.actionAcknowledgement).toBe(
+      'Checking your health reminders now.',
+    );
+    expect(result.toolExecutionContext).toContain(
+      'Malaria Prophylaxis at 14:00',
+    );
+    expect(result.toolExecutionContext).toContain('Clinic Visit at 16:30');
+  });
+
+  it('returns symptom guidance from the telehealth service', async () => {
+    telehealthService.checkSymptoms.mockResolvedValue({
+      data: {
+        guidance:
+          'Your symptoms may be caused by an infection. Please rest, hydrate, and see a doctor urgently if the chest pain worsens.',
+      },
+    });
+
+    const result = await service.executeToolCalls(
+      [
+        {
+          name: 'check_symptoms',
+          args: {
+            symptoms: 'I have a headache and chest pain',
+          },
+        },
+      ],
+      {
+        userId: 'user-123',
+      },
+    );
+
+    expect(result.actions).toEqual([]);
+    expect(result.actionAcknowledgement).toBe('Checking your symptoms now.');
+    expect(result.toolExecutionContext).toContain('symptom guidance:');
+    expect(result.toolExecutionContext).toContain('see a doctor urgently');
   });
 });

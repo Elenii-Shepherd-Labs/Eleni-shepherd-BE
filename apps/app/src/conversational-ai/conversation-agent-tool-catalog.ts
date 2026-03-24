@@ -33,6 +33,8 @@ export function buildConversationRoutingSystemPrompt() {
     '- Use check_tester_updates only when the user explicitly wants to check for a newer tester build.',
     '- Use get_subscription_status when the user asks about plan, tier, subscription access, or account entitlements.',
     '- Use get_allowed_languages when the user asks which languages are available or whether a language is supported.',
+    '- Use get_health_reminders when the user asks about their medications, appointments, reminders, or what they need to take later.',
+    '- Use check_symptoms when the user describes symptoms and wants health guidance. Pass the symptoms text in the symptoms argument.',
     '- Set shouldGenerateResponse to false only when the selected tools fully satisfy a short command.',
     '- Set shouldGenerateResponse to true when the user needs spoken confirmation, explanation, or conversation in addition to any tool execution.',
     '- Never invent unsupported tools, screens, or arguments.',
@@ -68,6 +70,8 @@ export function buildConversationRoutingToolDefinition() {
                   'check_tester_updates',
                   'get_subscription_status',
                   'get_allowed_languages',
+                  'get_health_reminders',
+                  'check_symptoms',
                 ],
               },
               args: {
@@ -82,6 +86,7 @@ export function buildConversationRoutingToolDefinition() {
                   category: { type: 'string' },
                   openScreen: { type: 'boolean' },
                   enabled: { type: 'boolean' },
+                  symptoms: { type: 'string' },
                 },
               },
             },
@@ -191,6 +196,12 @@ function sanitizeConversationToolCall(value: unknown): ConversationToolCall | nu
       return { name: 'get_subscription_status', args: {} };
     case 'get_allowed_languages':
       return { name: 'get_allowed_languages', args: {} };
+    case 'get_health_reminders':
+      return { name: 'get_health_reminders', args: {} };
+    case 'check_symptoms':
+      return typeof args.symptoms === 'string' && args.symptoms.trim().length > 0
+        ? { name: 'check_symptoms', args: { symptoms: args.symptoms.trim() } }
+        : null;
     default:
       return null;
   }
