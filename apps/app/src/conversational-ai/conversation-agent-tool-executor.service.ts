@@ -179,12 +179,13 @@ export class ConversationAgentToolExecutorService {
         const onboardingData = onboardingResponse.data as
           | {
               onboardingComplete?: boolean;
+              preferredName?: string;
               fullname?: {
                 firstName?: string;
                 lastName?: string;
                 middleName?: string;
               };
-              missingFields?: string[];
+              personalizationPending?: boolean;
             }
           | undefined;
 
@@ -204,11 +205,13 @@ export class ConversationAgentToolExecutorService {
           .join(' ')
           .trim();
 
+        const preferredName = onboardingData.preferredName?.trim();
+
         return {
           actions: [],
           summary: onboardingData.onboardingComplete
-            ? `onboarding is complete${displayName ? ` for ${displayName}` : ''}`
-            : `onboarding is still in progress${onboardingData.missingFields?.length ? ` and still needs ${onboardingData.missingFields.join(', ')}` : ''}`,
+            ? `onboarding is complete${displayName ? ` for ${displayName}` : ''}${preferredName ? ` and preferred name is ${preferredName}` : onboardingData.personalizationPending ? ' and preferred name is not set yet' : ''}`
+            : 'onboarding is still in progress',
         };
       }
       case 'get_health_reminders': {

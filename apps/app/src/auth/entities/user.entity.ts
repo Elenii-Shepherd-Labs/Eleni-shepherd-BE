@@ -5,6 +5,7 @@
 export class UserEntity {
   id: string;
   username: string;
+  preferredName?: string;
   email: string;
   fullname?: {
     firstname?: string;

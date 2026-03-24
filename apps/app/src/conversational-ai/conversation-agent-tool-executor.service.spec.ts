@@ -172,13 +172,14 @@ describe('ConversationAgentToolExecutorService', () => {
     onboardingService.getOnboardingStatus.mockResolvedValue({
       success: true,
       data: {
-        onboardingComplete: false,
+        onboardingComplete: true,
+        preferredName: '',
         fullname: {
           firstName: 'Ada',
           lastName: '',
           middleName: '',
         },
-        missingFields: ['lastName'],
+        personalizationPending: true,
       },
     });
 
@@ -196,8 +197,8 @@ describe('ConversationAgentToolExecutorService', () => {
 
     expect(result.actions).toEqual([]);
     expect(result.actionAcknowledgement).toBe('Checking your setup status now.');
-    expect(result.toolExecutionContext).toContain('onboarding is still in progress');
-    expect(result.toolExecutionContext).toContain('lastName');
+    expect(result.toolExecutionContext).toContain('onboarding is complete for Ada');
+    expect(result.toolExecutionContext).toContain('preferred name is not set yet');
   });
 
   it('returns symptom guidance from the telehealth service', async () => {

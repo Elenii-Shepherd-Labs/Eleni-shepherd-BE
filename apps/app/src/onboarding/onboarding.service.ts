@@ -137,7 +137,7 @@ export class OnboardingService {
     const userModelAny = this.userModel as any;
     const user = await userModelAny
       .findById(userId)
-      .select('fullname onboardingComplete')
+      .select('fullname preferredName onboardingComplete')
       .lean()
       .exec();
 
@@ -146,18 +146,15 @@ export class OnboardingService {
     }
 
     const fullname = this.toClientFullname(user.fullname as any);
-    const missingFields = [
-      !fullname.firstName ? 'firstName' : null,
-      !fullname.lastName ? 'lastName' : null,
-    ].filter((value): value is string => Boolean(value));
 
     return createAppResponse(
       true,
       'Onboarding status retrieved',
       {
         onboardingComplete: Boolean(user.onboardingComplete),
+        preferredName: user.preferredName || '',
         fullname,
-        missingFields,
+        personalizationPending: !user.preferredName,
       },
       200,
     );

@@ -75,6 +75,8 @@ GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
 
 The native Expo app now starts Google sign-in by opening `GET /auth/google` in the browser and passing its runtime-generated deep link in the OAuth `state` query param. After Google returns to `GOOGLE_CALLBACK_URL`, the backend validates or creates the user, issues a short-lived mobile `exchangeCode`, and redirects back to the app deep link so the app can finish bootstrap through `POST /auth/mobile/exchange`.
 
+Backend-authenticated Google sign-in is now treated as the onboarding completion boundary. Optional preferred-name personalization can be added later without blocking the user from entering the main app.
+
 `POST /auth/google/token` is still available for compatible clients that send a Google ID token directly, but the browser callback flow is now the primary mobile path.
 
 ## Repository Layout

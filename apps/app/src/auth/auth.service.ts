@@ -38,7 +38,12 @@ export class AuthService {
   ): Promise<User> {
     let user = await this.userModel.findOne({ googleId });
     if (!user) {
-      user = await this.userModel.create({ googleId, email, username });
+      user = await this.userModel.create({
+        googleId,
+        email,
+        username,
+        onboardingComplete: true,
+      });
     } else {
       const nextEmail = email.trim();
       const nextUsername = username.trim();
@@ -51,6 +56,11 @@ export class AuthService {
 
       if (nextUsername && user.username !== nextUsername) {
         user.username = nextUsername;
+        shouldSave = true;
+      }
+
+      if (!user.onboardingComplete) {
+        user.onboardingComplete = true;
         shouldSave = true;
       }
 

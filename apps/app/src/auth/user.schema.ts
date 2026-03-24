@@ -21,6 +21,9 @@ export class User extends Document {
   @Prop({ required: true })
   username: string;
 
+  @Prop()
+  preferredName?: string;
+
   @Prop({ type: FullName })
   fullname?: FullName;
 

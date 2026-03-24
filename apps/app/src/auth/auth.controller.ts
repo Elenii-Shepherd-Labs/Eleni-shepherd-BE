@@ -121,6 +121,7 @@ export class AuthController {
     return {
       id: String(user.id || user._id),
       displayName: user.username || '',
+      preferredName: user.preferredName || '',
       email: user.email,
       googleId: user.googleId,
       onboardingComplete: Boolean(user.onboardingComplete),
@@ -439,6 +440,7 @@ const user = await response.json();
     return {
       id: String(user.id || user._id),
       displayName: user.username || user.displayName || '',
+      preferredName: user.preferredName || '',
       email: user.email,
       googleId: user.googleId,
       onboardingComplete: Boolean(user.onboardingComplete),
