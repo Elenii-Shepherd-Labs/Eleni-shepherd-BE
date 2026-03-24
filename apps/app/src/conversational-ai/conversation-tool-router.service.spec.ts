@@ -60,7 +60,7 @@ describe('ConversationToolRouterService', () => {
     });
   });
 
-  it('falls back to deterministic routing when OpenAI is unavailable', async () => {
+  it('falls back to response-only routing when OpenAI is unavailable', async () => {
     llmService.isProviderConfigured.mockReturnValue(false);
 
     const result = await service.routeTurn({
@@ -75,8 +75,8 @@ describe('ConversationToolRouterService', () => {
     });
 
     expect(result).toEqual({
-      toolCalls: [{ name: 'start_google_auth', args: {} }],
-      shouldGenerateResponse: false,
+      toolCalls: [],
+      shouldGenerateResponse: true,
       source: 'fallback',
     });
   });
@@ -102,13 +102,8 @@ describe('ConversationToolRouterService', () => {
     });
 
     expect(result).toEqual({
-      toolCalls: [
-        {
-          name: 'play_radio',
-          args: { genre: 'Jazz', openScreen: true },
-        },
-      ],
-      shouldGenerateResponse: false,
+      toolCalls: [],
+      shouldGenerateResponse: true,
       source: 'fallback',
     });
   });

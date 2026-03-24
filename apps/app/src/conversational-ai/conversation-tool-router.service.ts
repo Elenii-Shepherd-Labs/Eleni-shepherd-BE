@@ -6,10 +6,6 @@ import {
   ConversationToolCall,
   ConversationToolRoutingDecision,
 } from './interfaces/conversation-agent.interface';
-import {
-  deriveFallbackToolCalls,
-  shouldFallbackToToolOnlyResponse,
-} from './conversation-agent-planner';
 
 type ParsedToolRoutingResponse = {
   toolCalls: ConversationToolCall[];
@@ -88,7 +84,7 @@ export class ConversationToolRouterService {
     const responseText = structuredResponse.data?.response;
     if (!structuredResponse.success || typeof responseText !== 'string') {
       this.logger.warn(
-        'Structured tool routing unavailable. Falling back to deterministic planner.',
+        'Structured tool routing unavailable. Falling back to response-only routing.',
       );
       return this.buildFallbackDecision(input.userMessage, input.clientState);
     }
@@ -96,7 +92,7 @@ export class ConversationToolRouterService {
     const parsed = this.parseToolRoutingResponse(responseText);
     if (!parsed) {
       this.logger.warn(
-        'Structured tool routing could not be parsed. Falling back to deterministic planner.',
+        'Structured tool routing could not be parsed. Falling back to response-only routing.',
       );
       return this.buildFallbackDecision(input.userMessage, input.clientState);
     }
@@ -148,16 +144,12 @@ export class ConversationToolRouterService {
   }
 
   private buildFallbackDecision(
-    userMessage: string,
-    clientState?: ConversationClientState,
+    _userMessage: string,
+    _clientState?: ConversationClientState,
   ): ConversationToolRoutingDecision {
-    const toolCalls = deriveFallbackToolCalls(userMessage, clientState);
     return {
-      toolCalls,
-      shouldGenerateResponse: !shouldFallbackToToolOnlyResponse(
-        userMessage,
-        toolCalls,
-      ),
+      toolCalls: [],
+      shouldGenerateResponse: true,
       source: 'fallback',
     };
   }

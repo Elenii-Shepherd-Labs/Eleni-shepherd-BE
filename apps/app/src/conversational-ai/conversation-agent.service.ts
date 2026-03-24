@@ -17,7 +17,7 @@ import {
 import {
   buildAgentState,
   buildEffectiveContext,
-} from './conversation-agent-planner';
+} from './conversation-agent-context';
 import { ConversationCheckpointService } from './conversation-checkpoint.service';
 import { executeConversationToolCalls } from './conversation-agent-tools';
 import { ConversationToolRouterService } from './conversation-tool-router.service';
