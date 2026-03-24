@@ -4,6 +4,7 @@ import { ConversationalAiController } from './conversational-ai.controller';
 import { LlmModule } from '../llm/llm.module';
 import { ConversationAgentService } from './conversation-agent.service';
 import { ConversationCheckpointService } from './conversation-checkpoint.service';
+import { ConversationToolRouterService } from './conversation-tool-router.service';
 
 @Module({
   imports: [LlmModule],
@@ -11,6 +12,7 @@ import { ConversationCheckpointService } from './conversation-checkpoint.service
     ConversationService,
     ConversationAgentService,
     ConversationCheckpointService,
+    ConversationToolRouterService,
   ],
   controllers: [ConversationalAiController],
 })

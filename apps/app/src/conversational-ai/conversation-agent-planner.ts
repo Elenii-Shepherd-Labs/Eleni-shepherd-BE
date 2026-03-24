@@ -143,7 +143,7 @@ export function normalizeUtterance(text: string) {
     .trim();
 }
 
-export function deriveToolCalls(
+export function deriveFallbackToolCalls(
   userMessage: string,
   clientState?: ConversationClientState,
 ): ConversationToolCall[] {
@@ -159,7 +159,7 @@ export function deriveToolCalls(
   return planner?.buildToolCalls(normalized, clientState) || [];
 }
 
-export function shouldShortCircuitToToolResponse(
+export function shouldFallbackToToolOnlyResponse(
   userMessage: string,
   toolCalls: ConversationToolCall[],
 ) {

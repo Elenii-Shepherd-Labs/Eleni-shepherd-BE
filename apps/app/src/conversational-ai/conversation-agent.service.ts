@@ -17,11 +17,10 @@ import {
 import {
   buildAgentState,
   buildEffectiveContext,
-  deriveToolCalls,
-  shouldShortCircuitToToolResponse,
 } from './conversation-agent-planner';
 import { ConversationCheckpointService } from './conversation-checkpoint.service';
 import { executeConversationToolCalls } from './conversation-agent-tools';
+import { ConversationToolRouterService } from './conversation-tool-router.service';
 
 const ConversationGraphState = Annotation.Root({
   sessionId: Annotation<string>(),
@@ -47,6 +46,7 @@ export class ConversationAgentService {
   constructor(
     private readonly llmService: LlmService,
     private readonly checkpointService: ConversationCheckpointService,
+    private readonly conversationToolRouterService: ConversationToolRouterService,
   ) {
     this.graph = this.buildGraph();
   }
@@ -95,14 +95,17 @@ export class ConversationAgentService {
   }
 
   private async planTurn(state: ConversationGraphStateType) {
-    const toolCalls = deriveToolCalls(state.userMessage, state.clientState);
+    const routingDecision = await this.conversationToolRouterService.routeTurn({
+      userMessage: state.userMessage,
+      sessionMessages: state.sessionMessages,
+      sessionContext: state.sessionContext,
+      clientState: state.clientState,
+      extraContext: state.extraContext,
+    });
 
     return {
-      toolCalls,
-      shouldGenerateResponse: !shouldShortCircuitToToolResponse(
-        state.userMessage,
-        toolCalls,
-      ),
+      toolCalls: routingDecision.toolCalls,
+      shouldGenerateResponse: routingDecision.shouldGenerateResponse,
       agentState: buildAgentState(state.clientState),
     };
   }

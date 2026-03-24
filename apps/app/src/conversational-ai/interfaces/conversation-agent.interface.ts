@@ -30,6 +30,12 @@ export type ConversationAgentState = {
   shouldKeepListening: boolean;
 };
 
+export type ConversationToolRoutingDecision = {
+  toolCalls: ConversationToolCall[];
+  shouldGenerateResponse: boolean;
+  source: 'model' | 'fallback';
+};
+
 export interface ConversationAgentResult {
   response: string;
   actions: ConversationClientAction[];

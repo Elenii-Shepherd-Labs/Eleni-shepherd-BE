@@ -11,7 +11,7 @@ export class LlmService {
   private readonly logger = new Logger(LlmService.name);
   private openai: OpenAI | null = null;
   private anthropic: Anthropic | null = null;
-  private provider: 'openai' | 'anthropic';
+  private provider: 'openai' | 'anthropic' | 'mock' = 'mock';
 
   constructor(private readonly configService: ConfigService) {
     const openaiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -27,7 +27,12 @@ export class LlmService {
       this.logger.log('Initialized Anthropic provider');
     } else {
       this.logger.warn('No API keys provided. Using mock responses.');
+      this.provider = 'mock';
     }
+  }
+
+  isProviderConfigured() {
+    return this.provider !== 'mock';
   }
 
   async generateResponse(
@@ -71,6 +76,42 @@ export class LlmService {
     }
   }
 
+  async generateStructuredResponse(
+    systemPrompt: string,
+    userPrompt: string,
+    options: {
+      schemaName: string;
+      schema: Record<string, unknown>;
+      model?: string;
+    },
+  ): Promise<IAppResponse> {
+    try {
+      if (this.provider === 'openai' && this.openai) {
+        const text = await this.generateOpenAIStructuredResponse(
+          systemPrompt,
+          userPrompt,
+          options,
+        );
+        return createAppResponse(
+          true,
+          'Structured response generated',
+          { response: text, provider: 'openai' },
+          200,
+        );
+      }
+
+      return createAppResponse(
+        false,
+        'Structured routing requires OpenAI',
+        null,
+        503,
+      );
+    } catch (error) {
+      this.logger.error(`Error generating structured response: ${error.message}`);
+      return createAppResponse(false, 'Structured LLM error', null, 500);
+    }
+  }
+
   private buildSystemPrompt(context?: string): string {
     let prompt = `You are a helpful AI assistant integrated with a screen reader. Your responses should be:
 - Clear and concise
@@ -107,6 +148,36 @@ export class LlmService {
       completion.choices[0]?.message?.content ||
       'I apologize, but I could not generate a response.'
     );
+  }
+
+  private async generateOpenAIStructuredResponse(
+    systemPrompt: string,
+    userPrompt: string,
+    options: {
+      schemaName: string;
+      schema: Record<string, unknown>;
+      model?: string;
+    },
+  ): Promise<string> {
+    const completion = await this.openai!.chat.completions.create({
+      model: options.model || 'gpt-4o-mini',
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: options.schemaName,
+          strict: true,
+          schema: options.schema,
+        },
+      },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0,
+      max_tokens: 400,
+    });
+
+    return completion.choices[0]?.message?.content || '{}';
   }
 
   private async generateAnthropicResponse(

@@ -3,25 +3,37 @@ import { LlmService } from '../llm/llm.service';
 import { Message } from '../llm/dto';
 import { ConversationCheckpointService } from './conversation-checkpoint.service';
 import { MemorySaver } from '@langchain/langgraph';
+import { ConversationToolRouterService } from './conversation-tool-router.service';
 
 describe('ConversationAgentService', () => {
   let service: ConversationAgentService;
   let llmService: { generateResponse: jest.Mock };
   let checkpointService: MemorySaver;
+  let conversationToolRouterService: { routeTurn: jest.Mock };
 
   beforeEach(() => {
     llmService = {
       generateResponse: jest.fn(),
     };
     checkpointService = new MemorySaver();
+    conversationToolRouterService = {
+      routeTurn: jest.fn(),
+    };
 
     service = new ConversationAgentService(
       llmService as unknown as LlmService,
       checkpointService as unknown as ConversationCheckpointService,
+      conversationToolRouterService as unknown as ConversationToolRouterService,
     );
   });
 
   it('returns a Google auth action during pre-auth onboarding', async () => {
+    conversationToolRouterService.routeTurn.mockResolvedValue({
+      toolCalls: [{ name: 'start_google_auth', args: {} }],
+      shouldGenerateResponse: false,
+      source: 'model',
+    });
+
     const result = await service.runTurn({
       sessionId: 'session-pre-auth',
       userMessage: 'sign me in with google',
@@ -46,6 +58,11 @@ describe('ConversationAgentService', () => {
   });
 
   it('uses the llm path for non-command turns', async () => {
+    conversationToolRouterService.routeTurn.mockResolvedValue({
+      toolCalls: [],
+      shouldGenerateResponse: true,
+      source: 'model',
+    });
     llmService.generateResponse.mockResolvedValue({
       data: { response: 'Here is what I found for you.' },
     });
@@ -83,6 +100,17 @@ describe('ConversationAgentService', () => {
   });
 
   it('derives route-aware media actions without calling the llm', async () => {
+    conversationToolRouterService.routeTurn.mockResolvedValue({
+      toolCalls: [
+        {
+          name: 'read_news',
+          args: { category: 'news', openScreen: true },
+        },
+      ],
+      shouldGenerateResponse: false,
+      source: 'model',
+    });
+
     const result = await service.runTurn({
       sessionId: 'session-news',
       userMessage: 'read the news',
