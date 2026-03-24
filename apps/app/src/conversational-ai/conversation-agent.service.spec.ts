@@ -137,6 +137,49 @@ describe('ConversationAgentService', () => {
     });
   });
 
+  it('passes tool execution context into the response generation path', async () => {
+    conversationToolRouterService.routeTurn.mockResolvedValue({
+      toolCalls: [
+        {
+          name: 'navigate',
+          args: { screen: 'Settings' },
+        },
+      ],
+      shouldGenerateResponse: true,
+      source: 'model',
+    });
+    llmService.generateResponse.mockResolvedValue({
+      data: { response: 'Opening settings. You can review your account there.' },
+    });
+
+    const result = await service.runTurn({
+      sessionId: 'session-settings',
+      userMessage: 'open settings and tell me what I can do there',
+      sessionMessages: [
+        {
+          role: 'user',
+          content: 'open settings and tell me what I can do there',
+        },
+      ],
+      sessionContext: 'User prefers direct spoken guidance.',
+      clientState: {
+        onboardingPhase: 'assistant',
+        hasVerifiedIdentity: true,
+        isAlwaysListen: false,
+        currentRoute: 'Home',
+      },
+    });
+
+    expect(llmService.generateResponse).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.stringContaining('Recent client tool execution: Planned tools: navigate to Settings.'),
+    );
+    expect(result.actions).toEqual([{ type: 'navigate', screen: 'Settings' }]);
+    expect(result.response).toBe(
+      'Opening settings. You can review your account there.',
+    );
+  });
+
   it('delegates thread cleanup to the checkpoint service', async () => {
     const deleteThreadSpy = jest.spyOn(checkpointService, 'deleteThread');
 

@@ -41,4 +41,23 @@ describe('executeConversationToolCalls', () => {
       'Opening radio and tuning into Jazz stations.',
     );
   });
+
+  it('emits route navigation for supported direct screen requests', () => {
+    const result = executeConversationToolCalls(
+      [
+        {
+          name: 'navigate',
+          args: { screen: 'Settings' },
+        },
+      ],
+      {
+        currentRoute: 'Home',
+      },
+    );
+
+    expect(result.actions).toEqual([{ type: 'navigate', screen: 'Settings' }]);
+    expect(result.actionAcknowledgement).toBe('Opening settings now.');
+    expect(result.toolExecutionContext).toContain('navigate to Settings');
+    expect(result.toolExecutionContext).toContain('navigate:Settings');
+  });
 });

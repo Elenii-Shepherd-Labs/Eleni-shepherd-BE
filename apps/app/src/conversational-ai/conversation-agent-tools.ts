@@ -7,7 +7,12 @@ import {
 type ExecutedToolCalls = {
   actions: ConversationClientAction[];
   actionAcknowledgement: string | null;
+  toolExecutionContext: string | null;
 };
+
+function unreachableToolOrAction(value: never): never {
+  throw new Error(`Unhandled tool or action variant: ${JSON.stringify(value)}`);
+}
 
 function buildActionAcknowledgement(
   toolCall: ConversationToolCall | undefined,
@@ -96,5 +101,74 @@ export function executeConversationToolCalls(
   return {
     actions,
     actionAcknowledgement: buildActionAcknowledgement(toolCalls[0]),
+    toolExecutionContext: buildToolExecutionContext(toolCalls, actions, clientState),
   };
+}
+
+function buildToolExecutionContext(
+  toolCalls: ConversationToolCall[],
+  actions: ConversationClientAction[],
+  clientState?: ConversationClientState,
+) {
+  if (toolCalls.length === 0) {
+    return null;
+  }
+
+  const plannedTools = toolCalls
+    .map((toolCall) => {
+      switch (toolCall.name) {
+        case 'navigate':
+          return `navigate to ${toolCall.args.screen}`;
+        case 'play_radio':
+          return `play radio${toolCall.args.genre ? ` for ${toolCall.args.genre}` : ''}`;
+        case 'read_news':
+          return `read news${toolCall.args.category ? ` for ${toolCall.args.category}` : ''}`;
+        case 'vision_scan':
+          return 'perform a vision scan';
+        case 'set_listen_mode':
+          return toolCall.args.enabled
+            ? 'enable always-listen mode'
+            : 'disable always-listen mode';
+        case 'stop_audio':
+          return 'stop audio playback';
+        case 'start_google_auth':
+          return 'start Google sign in';
+      }
+
+      return unreachableToolOrAction(toolCall);
+    })
+    .join(', ');
+
+  const emittedActions = actions
+    .map((action) => {
+      switch (action.type) {
+        case 'navigate':
+          return `navigate:${action.screen}`;
+        case 'play_radio':
+          return `play_radio:${action.genre || 'Nigeria'}`;
+        case 'read_news':
+          return `read_news:${action.category || 'news'}`;
+        case 'vision_scan':
+          return 'vision_scan';
+        case 'set_listen_mode':
+          return action.enabled
+            ? 'set_listen_mode:on'
+            : 'set_listen_mode:off';
+        case 'stop_audio':
+          return 'stop_audio';
+        case 'start_google_auth':
+          return 'start_google_auth';
+      }
+
+      return unreachableToolOrAction(action);
+    })
+    .join(', ');
+
+  const routeContext = clientState?.currentRoute
+    ? ` Current route before execution: ${clientState.currentRoute}.`
+    : '';
+
+  return `Planned tools: ${plannedTools}. Emitted actions: ${
+    emittedActions || 'none'
+  }.${routeContext}`;
 }

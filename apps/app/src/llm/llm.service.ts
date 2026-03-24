@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import type { ChatCompletionMessageToolCall } from 'openai/resources/chat/completions';
 import Anthropic from '@anthropic-ai/sdk';
 import { Message } from './dto';
 import { IAppResponse } from '@app/common/interfaces/response.interface';
@@ -76,39 +77,40 @@ export class LlmService {
     }
   }
 
-  async generateStructuredResponse(
+  async generateToolPlanningResponse(
     systemPrompt: string,
     userPrompt: string,
     options: {
-      schemaName: string;
-      schema: Record<string, unknown>;
+      toolName: string;
+      toolDescription: string;
+      parameters: Record<string, unknown>;
       model?: string;
     },
   ): Promise<IAppResponse> {
     try {
       if (this.provider === 'openai' && this.openai) {
-        const text = await this.generateOpenAIStructuredResponse(
+        const toolArguments = await this.generateOpenAIToolPlanningResponse(
           systemPrompt,
           userPrompt,
           options,
         );
         return createAppResponse(
           true,
-          'Structured response generated',
-          { response: text, provider: 'openai' },
+          'Tool planning response generated',
+          { response: toolArguments, provider: 'openai' },
           200,
         );
       }
 
       return createAppResponse(
         false,
-        'Structured routing requires OpenAI',
+        'Tool planning requires OpenAI',
         null,
         503,
       );
     } catch (error) {
-      this.logger.error(`Error generating structured response: ${error.message}`);
-      return createAppResponse(false, 'Structured LLM error', null, 500);
+      this.logger.error(`Error generating tool planning response: ${error.message}`);
+      return createAppResponse(false, 'Tool planning error', null, 500);
     }
   }
 
@@ -150,34 +152,58 @@ export class LlmService {
     );
   }
 
-  private async generateOpenAIStructuredResponse(
+  private async generateOpenAIToolPlanningResponse(
     systemPrompt: string,
     userPrompt: string,
     options: {
-      schemaName: string;
-      schema: Record<string, unknown>;
+      toolName: string;
+      toolDescription: string;
+      parameters: Record<string, unknown>;
       model?: string;
     },
   ): Promise<string> {
     const completion = await this.openai!.chat.completions.create({
       model: options.model || 'gpt-4o-mini',
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: options.schemaName,
-          strict: true,
-          schema: options.schema,
-        },
-      },
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: options.toolName,
+            description: options.toolDescription,
+            parameters: options.parameters,
+            strict: true,
+          },
+        },
+      ],
+      tool_choice: {
+        type: 'function',
+        function: {
+          name: options.toolName,
+        },
+      },
       temperature: 0,
       max_tokens: 400,
     });
 
-    return completion.choices[0]?.message?.content || '{}';
+    const toolCall = completion.choices[0]?.message?.tool_calls?.find(
+      (candidate) =>
+        isFunctionToolCall(candidate) &&
+        candidate.function.name === options.toolName,
+    );
+
+    if (
+      !toolCall ||
+      !isFunctionToolCall(toolCall) ||
+      !toolCall.function.arguments
+    ) {
+      throw new Error('OpenAI returned no tool planning arguments.');
+    }
+
+    return toolCall.function.arguments;
   }
 
   private async generateAnthropicResponse(
@@ -248,4 +274,10 @@ export class LlmService {
         'I apologize, but I could not generate a response.';
     }
   }
+}
+
+function isFunctionToolCall(
+  toolCall: ChatCompletionMessageToolCall,
+): toolCall is OpenAI.Chat.ChatCompletionMessageFunctionToolCall {
+  return toolCall.type === 'function';
 }

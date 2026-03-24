@@ -5,13 +5,13 @@ describe('ConversationToolRouterService', () => {
   let service: ConversationToolRouterService;
   let llmService: {
     isProviderConfigured: jest.Mock;
-    generateStructuredResponse: jest.Mock;
+    generateToolPlanningResponse: jest.Mock;
   };
 
   beforeEach(() => {
     llmService = {
       isProviderConfigured: jest.fn(),
-      generateStructuredResponse: jest.fn(),
+      generateToolPlanningResponse: jest.fn(),
     };
 
     service = new ConversationToolRouterService(
@@ -21,7 +21,7 @@ describe('ConversationToolRouterService', () => {
 
   it('uses model-selected tool routing when OpenAI returns structured output', async () => {
     llmService.isProviderConfigured.mockReturnValue(true);
-    llmService.generateStructuredResponse.mockResolvedValue({
+    llmService.generateToolPlanningResponse.mockResolvedValue({
       success: true,
       data: {
         response: JSON.stringify({
@@ -47,7 +47,7 @@ describe('ConversationToolRouterService', () => {
       },
     });
 
-    expect(llmService.generateStructuredResponse).toHaveBeenCalled();
+    expect(llmService.generateToolPlanningResponse).toHaveBeenCalled();
     expect(result).toEqual({
       toolCalls: [
         {
@@ -83,7 +83,7 @@ describe('ConversationToolRouterService', () => {
 
   it('falls back when the structured response is malformed', async () => {
     llmService.isProviderConfigured.mockReturnValue(true);
-    llmService.generateStructuredResponse.mockResolvedValue({
+    llmService.generateToolPlanningResponse.mockResolvedValue({
       success: true,
       data: {
         response: 'not valid json',
@@ -105,6 +105,46 @@ describe('ConversationToolRouterService', () => {
       toolCalls: [],
       shouldGenerateResponse: true,
       source: 'fallback',
+    });
+  });
+
+  it('accepts route navigation only for supported screens', async () => {
+    llmService.isProviderConfigured.mockReturnValue(true);
+    llmService.generateToolPlanningResponse.mockResolvedValue({
+      success: true,
+      data: {
+        response: JSON.stringify({
+          toolCalls: [
+            {
+              name: 'navigate',
+              args: { screen: 'Settings' },
+            },
+          ],
+          shouldGenerateResponse: false,
+        }),
+      },
+    });
+
+    const result = await service.routeTurn({
+      userMessage: 'open settings',
+      sessionMessages: [{ role: 'user', content: 'open settings' }],
+      sessionContext: '',
+      clientState: {
+        onboardingPhase: 'assistant',
+        currentRoute: 'Home',
+        hasVerifiedIdentity: true,
+      },
+    });
+
+    expect(result).toEqual({
+      toolCalls: [
+        {
+          name: 'navigate',
+          args: { screen: 'Settings' },
+        },
+      ],
+      shouldGenerateResponse: false,
+      source: 'model',
     });
   });
 });

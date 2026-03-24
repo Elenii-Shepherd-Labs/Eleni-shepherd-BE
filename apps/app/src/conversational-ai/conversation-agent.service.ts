@@ -32,6 +32,7 @@ const ConversationGraphState = Annotation.Root({
   toolCalls: Annotation<ConversationToolCall[]>(),
   actions: Annotation<ConversationClientAction[]>(),
   actionAcknowledgement: Annotation<string | null>(),
+  toolExecutionContext: Annotation<string | null>(),
   shouldGenerateResponse: Annotation<boolean>(),
   responseText: Annotation<string>(),
   agentState: Annotation<ConversationAgentState>(),
@@ -124,6 +125,7 @@ export class ConversationAgentService {
         state.sessionContext,
         state.clientState,
         state.extraContext,
+        state.toolExecutionContext,
       ),
     );
 

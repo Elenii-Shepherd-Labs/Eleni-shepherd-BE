@@ -7,6 +7,7 @@ export function buildEffectiveContext(
   sessionContext: string,
   clientState?: ConversationClientState,
   extraContext?: string,
+  toolExecutionContext?: string | null,
 ) {
   const contextParts = [sessionContext];
 
@@ -38,6 +39,12 @@ export function buildEffectiveContext(
 
   if (extraContext) {
     contextParts.push(extraContext);
+  }
+
+  if (toolExecutionContext) {
+    contextParts.push(
+      `Recent client tool execution: ${toolExecutionContext}`,
+    );
   }
 
   return contextParts.filter(Boolean).join('\n');
