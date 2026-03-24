@@ -4,12 +4,14 @@ import { Message } from '../llm/dto';
 import { ConversationCheckpointService } from './conversation-checkpoint.service';
 import { MemorySaver } from '@langchain/langgraph';
 import { ConversationToolRouterService } from './conversation-tool-router.service';
+import { ConversationAgentToolExecutorService } from './conversation-agent-tool-executor.service';
 
 describe('ConversationAgentService', () => {
   let service: ConversationAgentService;
   let llmService: { generateResponse: jest.Mock };
   let checkpointService: MemorySaver;
   let conversationToolRouterService: { routeTurn: jest.Mock };
+  let conversationAgentToolExecutorService: { executeToolCalls: jest.Mock };
 
   beforeEach(() => {
     llmService = {
@@ -19,11 +21,15 @@ describe('ConversationAgentService', () => {
     conversationToolRouterService = {
       routeTurn: jest.fn(),
     };
+    conversationAgentToolExecutorService = {
+      executeToolCalls: jest.fn(),
+    };
 
     service = new ConversationAgentService(
       llmService as unknown as LlmService,
       checkpointService as unknown as ConversationCheckpointService,
       conversationToolRouterService as unknown as ConversationToolRouterService,
+      conversationAgentToolExecutorService as unknown as ConversationAgentToolExecutorService,
     );
   });
 
@@ -32,6 +38,11 @@ describe('ConversationAgentService', () => {
       toolCalls: [{ name: 'start_google_auth', args: {} }],
       shouldGenerateResponse: false,
       source: 'model',
+    });
+    conversationAgentToolExecutorService.executeToolCalls.mockResolvedValue({
+      actions: [{ type: 'start_google_auth' }],
+      actionAcknowledgement: 'Okay. Opening Google sign in now.',
+      toolExecutionContext: 'Tool outcomes: start Google sign in.',
     });
 
     const result = await service.runTurn({
@@ -62,6 +73,11 @@ describe('ConversationAgentService', () => {
       toolCalls: [],
       shouldGenerateResponse: true,
       source: 'model',
+    });
+    conversationAgentToolExecutorService.executeToolCalls.mockResolvedValue({
+      actions: [],
+      actionAcknowledgement: null,
+      toolExecutionContext: null,
     });
     llmService.generateResponse.mockResolvedValue({
       data: { response: 'Here is what I found for you.' },
@@ -110,6 +126,15 @@ describe('ConversationAgentService', () => {
       shouldGenerateResponse: false,
       source: 'model',
     });
+    conversationAgentToolExecutorService.executeToolCalls.mockResolvedValue({
+      actions: [
+        { type: 'navigate', screen: 'News' },
+        { type: 'read_news', category: 'news' },
+      ],
+      actionAcknowledgement: 'Opening news and reading the latest headlines.',
+      toolExecutionContext:
+        'Tool outcomes: read news for news. Current route before execution: Home.',
+    });
 
     const result = await service.runTurn({
       sessionId: 'session-news',
@@ -148,6 +173,12 @@ describe('ConversationAgentService', () => {
       shouldGenerateResponse: true,
       source: 'model',
     });
+    conversationAgentToolExecutorService.executeToolCalls.mockResolvedValue({
+      actions: [{ type: 'navigate', screen: 'Settings' }],
+      actionAcknowledgement: 'Opening settings now.',
+      toolExecutionContext:
+        'Tool outcomes: navigate to Settings. Current route before execution: Home.',
+    });
     llmService.generateResponse.mockResolvedValue({
       data: { response: 'Opening settings. You can review your account there.' },
     });
@@ -172,11 +203,66 @@ describe('ConversationAgentService', () => {
 
     expect(llmService.generateResponse).toHaveBeenCalledWith(
       expect.any(Array),
-      expect.stringContaining('Recent client tool execution: Planned tools: navigate to Settings.'),
+      expect.stringContaining(
+        'Recent client tool execution: Tool outcomes: navigate to Settings. Current route before execution: Home.',
+      ),
     );
     expect(result.actions).toEqual([{ type: 'navigate', screen: 'Settings' }]);
     expect(result.response).toBe(
       'Opening settings. You can review your account there.',
+    );
+  });
+
+  it('passes the session user id into backend-owned tool execution', async () => {
+    conversationToolRouterService.routeTurn.mockResolvedValue({
+      toolCalls: [
+        {
+          name: 'get_subscription_status',
+          args: {},
+        },
+      ],
+      shouldGenerateResponse: true,
+      source: 'model',
+    });
+    conversationAgentToolExecutorService.executeToolCalls.mockResolvedValue({
+      actions: [],
+      actionAcknowledgement: 'Checking your subscription details now.',
+      toolExecutionContext:
+        'Tool outcomes: subscription tier is subscribed with access to English, Yoruba.',
+    });
+    llmService.generateResponse.mockResolvedValue({
+      data: {
+        response: 'You are on the subscribed tier and can use English and Yoruba.',
+      },
+    });
+
+    const result = await service.runTurn({
+      sessionId: 'session-subscription',
+      userId: 'user-123',
+      userMessage: 'what languages can I use',
+      sessionMessages: [{ role: 'user', content: 'what languages can I use' }],
+      sessionContext: '',
+      clientState: {
+        onboardingPhase: 'assistant',
+        hasVerifiedIdentity: true,
+        currentRoute: 'Settings',
+      },
+    });
+
+    expect(conversationAgentToolExecutorService.executeToolCalls).toHaveBeenCalledWith(
+      [{ name: 'get_subscription_status', args: {} }],
+      {
+        clientState: {
+          onboardingPhase: 'assistant',
+          hasVerifiedIdentity: true,
+          currentRoute: 'Settings',
+        },
+        userId: 'user-123',
+      },
+    );
+    expect(result.actions).toEqual([]);
+    expect(result.response).toBe(
+      'You are on the subscribed tier and can use English and Yoruba.',
     );
   });
 

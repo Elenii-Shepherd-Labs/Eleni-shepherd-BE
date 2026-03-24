@@ -29,6 +29,10 @@ export function buildConversationRoutingSystemPrompt() {
     '- Use set_listen_mode when the user asks to enable or disable always-listen mode.',
     '- Use stop_audio when the user asks to stop speaking, stop playback, mute, or be quiet.',
     '- Use start_google_auth for pre-auth onboarding sign-in requests.',
+    '- Use open_tester_feedback only when the user explicitly wants to report a tester issue or send build feedback.',
+    '- Use check_tester_updates only when the user explicitly wants to check for a newer tester build.',
+    '- Use get_subscription_status when the user asks about plan, tier, subscription access, or account entitlements.',
+    '- Use get_allowed_languages when the user asks which languages are available or whether a language is supported.',
     '- Set shouldGenerateResponse to false only when the selected tools fully satisfy a short command.',
     '- Set shouldGenerateResponse to true when the user needs spoken confirmation, explanation, or conversation in addition to any tool execution.',
     '- Never invent unsupported tools, screens, or arguments.',
@@ -39,7 +43,7 @@ export function buildConversationRoutingToolDefinition() {
   return {
     name: 'plan_conversation_turn',
     description:
-      'Select the next client tool calls for the assistant and whether a spoken response is still needed.',
+      'Select the next assistant tool calls and whether a spoken response is still needed.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -60,6 +64,10 @@ export function buildConversationRoutingToolDefinition() {
                   'set_listen_mode',
                   'stop_audio',
                   'start_google_auth',
+                  'open_tester_feedback',
+                  'check_tester_updates',
+                  'get_subscription_status',
+                  'get_allowed_languages',
                 ],
               },
               args: {
@@ -175,6 +183,14 @@ function sanitizeConversationToolCall(value: unknown): ConversationToolCall | nu
       return { name: 'stop_audio', args: {} };
     case 'start_google_auth':
       return { name: 'start_google_auth', args: {} };
+    case 'open_tester_feedback':
+      return { name: 'open_tester_feedback', args: {} };
+    case 'check_tester_updates':
+      return { name: 'check_tester_updates', args: {} };
+    case 'get_subscription_status':
+      return { name: 'get_subscription_status', args: {} };
+    case 'get_allowed_languages':
+      return { name: 'get_allowed_languages', args: {} };
     default:
       return null;
   }

@@ -19,11 +19,12 @@ import {
   buildEffectiveContext,
 } from './conversation-agent-context';
 import { ConversationCheckpointService } from './conversation-checkpoint.service';
-import { executeConversationToolCalls } from './conversation-agent-tools';
+import { ConversationAgentToolExecutorService } from './conversation-agent-tool-executor.service';
 import { ConversationToolRouterService } from './conversation-tool-router.service';
 
 const ConversationGraphState = Annotation.Root({
   sessionId: Annotation<string>(),
+  userId: Annotation<string | undefined>(),
   userMessage: Annotation<string>(),
   sessionMessages: Annotation<Message[]>(),
   sessionContext: Annotation<string>(),
@@ -48,6 +49,7 @@ export class ConversationAgentService {
     private readonly llmService: LlmService,
     private readonly checkpointService: ConversationCheckpointService,
     private readonly conversationToolRouterService: ConversationToolRouterService,
+    private readonly conversationAgentToolExecutorService: ConversationAgentToolExecutorService,
   ) {
     this.graph = this.buildGraph();
   }
@@ -72,6 +74,7 @@ export class ConversationAgentService {
 
   async runTurn(input: {
     sessionId: string;
+    userId?: string;
     userMessage: string;
     sessionMessages: Message[];
     sessionContext: string;
@@ -112,9 +115,12 @@ export class ConversationAgentService {
   }
 
   private async executeTools(state: ConversationGraphStateType) {
-    return executeConversationToolCalls(
+    return this.conversationAgentToolExecutorService.executeToolCalls(
       state.toolCalls || [],
-      state.clientState,
+      {
+        clientState: state.clientState,
+        userId: state.userId,
+      },
     );
   }
 

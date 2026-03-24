@@ -5,7 +5,9 @@ export type ConversationClientAction =
   | { type: 'vision_scan' }
   | { type: 'set_listen_mode'; enabled: boolean }
   | { type: 'stop_audio' }
-  | { type: 'start_google_auth' };
+  | { type: 'start_google_auth' }
+  | { type: 'open_tester_feedback' }
+  | { type: 'check_tester_updates' };
 
 export type ConversationToolCall =
   | { name: 'navigate'; args: { screen: string } }
@@ -14,7 +16,11 @@ export type ConversationToolCall =
   | { name: 'vision_scan'; args: Record<string, never> }
   | { name: 'set_listen_mode'; args: { enabled: boolean } }
   | { name: 'stop_audio'; args: Record<string, never> }
-  | { name: 'start_google_auth'; args: Record<string, never> };
+  | { name: 'start_google_auth'; args: Record<string, never> }
+  | { name: 'open_tester_feedback'; args: Record<string, never> }
+  | { name: 'check_tester_updates'; args: Record<string, never> }
+  | { name: 'get_subscription_status'; args: Record<string, never> }
+  | { name: 'get_allowed_languages'; args: Record<string, never> };
 
 export type ConversationClientState = {
   currentRoute?: string;

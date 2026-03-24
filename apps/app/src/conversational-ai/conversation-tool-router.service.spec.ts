@@ -147,4 +147,44 @@ describe('ConversationToolRouterService', () => {
       source: 'model',
     });
   });
+
+  it('accepts backend-owned subscription tools from the planner', async () => {
+    llmService.isProviderConfigured.mockReturnValue(true);
+    llmService.generateToolPlanningResponse.mockResolvedValue({
+      success: true,
+      data: {
+        response: JSON.stringify({
+          toolCalls: [
+            {
+              name: 'get_allowed_languages',
+              args: {},
+            },
+          ],
+          shouldGenerateResponse: true,
+        }),
+      },
+    });
+
+    const result = await service.routeTurn({
+      userMessage: 'which languages can I use',
+      sessionMessages: [{ role: 'user', content: 'which languages can I use' }],
+      sessionContext: '',
+      clientState: {
+        onboardingPhase: 'assistant',
+        currentRoute: 'Settings',
+        hasVerifiedIdentity: true,
+      },
+    });
+
+    expect(result).toEqual({
+      toolCalls: [
+        {
+          name: 'get_allowed_languages',
+          args: {},
+        },
+      ],
+      shouldGenerateResponse: true,
+      source: 'model',
+    });
+  });
 });

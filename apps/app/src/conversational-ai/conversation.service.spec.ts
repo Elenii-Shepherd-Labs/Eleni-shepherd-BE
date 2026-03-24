@@ -68,6 +68,7 @@ describe('ConversationService', () => {
 
     expect(conversationAgentService.runTurn).toHaveBeenCalledWith({
       sessionId: 'session-1',
+      userId: 'user-1',
       userMessage: 'read the news',
       sessionMessages: [{ role: 'user', content: 'read the news' }],
       sessionContext: '',
@@ -136,6 +137,12 @@ describe('ConversationService', () => {
     });
 
     await service.processMessage('session-trim', 'new message');
+
+    expect(conversationAgentService.runTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+      }),
+    );
 
     const storedSession = cacheStore.get(
       'conversation:session:session-trim',

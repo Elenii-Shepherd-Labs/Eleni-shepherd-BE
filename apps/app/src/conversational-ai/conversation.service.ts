@@ -131,6 +131,7 @@ export class ConversationService {
 
     const agentResult = await this.conversationAgentService.runTurn({
       sessionId,
+      userId: session.userId ? String(session.userId) : undefined,
       userMessage,
       sessionMessages: sessionMessagesForAgent,
       sessionContext: session.context,
