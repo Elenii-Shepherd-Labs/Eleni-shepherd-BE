@@ -8,9 +8,10 @@ import { ConversationToolRouterService } from './conversation-tool-router.servic
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { ConversationAgentToolExecutorService } from './conversation-agent-tool-executor.service';
 import { TelehealthModule } from '../telehealth/telehealth.module';
+import { OnboardingModule } from '../onboarding/onboarding.module';
 
 @Module({
-  imports: [LlmModule, SubscriptionModule, TelehealthModule],
+  imports: [LlmModule, SubscriptionModule, TelehealthModule, OnboardingModule],
   providers: [
     ConversationService,
     ConversationAgentService,

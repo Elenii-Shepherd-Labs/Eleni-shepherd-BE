@@ -7,8 +7,12 @@ describe('ConversationAgentToolExecutorService', () => {
     getAllowedLanguages: jest.Mock;
   };
   let telehealthService: {
+    createReminder: jest.Mock;
     getRemindersByUser: jest.Mock;
     checkSymptoms: jest.Mock;
+  };
+  let onboardingService: {
+    getOnboardingStatus: jest.Mock;
   };
 
   beforeEach(() => {
@@ -17,13 +21,18 @@ describe('ConversationAgentToolExecutorService', () => {
       getAllowedLanguages: jest.fn().mockReturnValue(['en']),
     };
     telehealthService = {
+      createReminder: jest.fn(),
       getRemindersByUser: jest.fn(),
       checkSymptoms: jest.fn(),
+    };
+    onboardingService = {
+      getOnboardingStatus: jest.fn(),
     };
 
     service = new ConversationAgentToolExecutorService(
       subscriptionService as never,
       telehealthService as never,
+      onboardingService as never,
     );
   });
 
@@ -159,6 +168,38 @@ describe('ConversationAgentToolExecutorService', () => {
     expect(result.toolExecutionContext).toContain('Clinic Visit at 16:30');
   });
 
+  it('returns onboarding status from the onboarding service', async () => {
+    onboardingService.getOnboardingStatus.mockResolvedValue({
+      success: true,
+      data: {
+        onboardingComplete: false,
+        fullname: {
+          firstName: 'Ada',
+          lastName: '',
+          middleName: '',
+        },
+        missingFields: ['lastName'],
+      },
+    });
+
+    const result = await service.executeToolCalls(
+      [
+        {
+          name: 'get_onboarding_status',
+          args: {},
+        },
+      ],
+      {
+        userId: 'user-123',
+      },
+    );
+
+    expect(result.actions).toEqual([]);
+    expect(result.actionAcknowledgement).toBe('Checking your setup status now.');
+    expect(result.toolExecutionContext).toContain('onboarding is still in progress');
+    expect(result.toolExecutionContext).toContain('lastName');
+  });
+
   it('returns symptom guidance from the telehealth service', async () => {
     telehealthService.checkSymptoms.mockResolvedValue({
       data: {
@@ -185,5 +226,47 @@ describe('ConversationAgentToolExecutorService', () => {
     expect(result.actionAcknowledgement).toBe('Checking your symptoms now.');
     expect(result.toolExecutionContext).toContain('symptom guidance:');
     expect(result.toolExecutionContext).toContain('see a doctor urgently');
+  });
+
+  it('creates a health reminder through the telehealth service', async () => {
+    telehealthService.createReminder.mockResolvedValue({
+      success: true,
+      data: {
+        title: 'Blood pressure medication',
+        time: '08:00',
+      },
+    });
+
+    const result = await service.executeToolCalls(
+      [
+        {
+          name: 'create_health_reminder',
+          args: {
+            title: 'Blood pressure medication',
+            time: '08:00',
+            type: 'medication',
+            notes: 'Take after breakfast',
+          },
+        },
+      ],
+      {
+        userId: 'user-123',
+      },
+    );
+
+    expect(telehealthService.createReminder).toHaveBeenCalledWith({
+      userId: 'user-123',
+      title: 'Blood pressure medication',
+      time: '08:00',
+      type: 'medication',
+      notes: 'Take after breakfast',
+    });
+    expect(result.actions).toEqual([]);
+    expect(result.actionAcknowledgement).toBe(
+      'Creating a reminder for Blood pressure medication now.',
+    );
+    expect(result.toolExecutionContext).toContain(
+      'created a medication reminder for Blood pressure medication at 08:00',
+    );
   });
 });

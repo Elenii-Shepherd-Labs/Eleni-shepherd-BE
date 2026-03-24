@@ -33,8 +33,10 @@ export function buildConversationRoutingSystemPrompt() {
     '- Use check_tester_updates only when the user explicitly wants to check for a newer tester build.',
     '- Use get_subscription_status when the user asks about plan, tier, subscription access, or account entitlements.',
     '- Use get_allowed_languages when the user asks which languages are available or whether a language is supported.',
+    '- Use get_onboarding_status when the user asks whether setup is complete, whether their profile is ready, or what onboarding details are still missing.',
     '- Use get_health_reminders when the user asks about their medications, appointments, reminders, or what they need to take later.',
     '- Use check_symptoms when the user describes symptoms and wants health guidance. Pass the symptoms text in the symptoms argument.',
+    '- Use create_health_reminder when the user wants to add a medication, appointment, or health reminder. Pass title and time in HH:MM format, and include type or notes when the request provides them.',
     '- Set shouldGenerateResponse to false only when the selected tools fully satisfy a short command.',
     '- Set shouldGenerateResponse to true when the user needs spoken confirmation, explanation, or conversation in addition to any tool execution.',
     '- Never invent unsupported tools, screens, or arguments.',
@@ -70,8 +72,10 @@ export function buildConversationRoutingToolDefinition() {
                   'check_tester_updates',
                   'get_subscription_status',
                   'get_allowed_languages',
+                  'get_onboarding_status',
                   'get_health_reminders',
                   'check_symptoms',
+                  'create_health_reminder',
                 ],
               },
               args: {
@@ -87,6 +91,13 @@ export function buildConversationRoutingToolDefinition() {
                   openScreen: { type: 'boolean' },
                   enabled: { type: 'boolean' },
                   symptoms: { type: 'string' },
+                  title: { type: 'string' },
+                  time: { type: 'string' },
+                  type: {
+                    type: 'string',
+                    enum: ['medication', 'appointment', 'other'],
+                  },
+                  notes: { type: 'string' },
                 },
               },
             },
@@ -196,11 +207,36 @@ function sanitizeConversationToolCall(value: unknown): ConversationToolCall | nu
       return { name: 'get_subscription_status', args: {} };
     case 'get_allowed_languages':
       return { name: 'get_allowed_languages', args: {} };
+    case 'get_onboarding_status':
+      return { name: 'get_onboarding_status', args: {} };
     case 'get_health_reminders':
       return { name: 'get_health_reminders', args: {} };
     case 'check_symptoms':
       return typeof args.symptoms === 'string' && args.symptoms.trim().length > 0
         ? { name: 'check_symptoms', args: { symptoms: args.symptoms.trim() } }
+        : null;
+    case 'create_health_reminder':
+      return typeof args.title === 'string' &&
+        args.title.trim().length > 0 &&
+        typeof args.time === 'string' &&
+        /^\d{2}:\d{2}$/.test(args.time.trim())
+        ? {
+            name: 'create_health_reminder',
+            args: {
+              title: args.title.trim(),
+              time: args.time.trim(),
+              type:
+                args.type === 'medication' ||
+                args.type === 'appointment' ||
+                args.type === 'other'
+                  ? args.type
+                  : undefined,
+              notes:
+                typeof args.notes === 'string' && args.notes.trim().length > 0
+                  ? args.notes.trim()
+                  : undefined,
+            },
+          }
         : null;
     default:
       return null;

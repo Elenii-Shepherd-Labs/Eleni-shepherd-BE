@@ -11,5 +11,6 @@ import { User, UserSchema } from '../auth/user.schema';
   ],
   controllers: [OnboardingController],
   providers: [TranscriptionService, OnboardingService],
+  exports: [OnboardingService],
 })
 export class OnboardingModule {}

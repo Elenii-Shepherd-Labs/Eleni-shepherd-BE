@@ -128,4 +128,38 @@ export class OnboardingService {
       200,
     );
   }
+
+  async getOnboardingStatus(userId: string): Promise<IAppResponse> {
+    if (!isValidObjectId(userId)) {
+      return createAppResponse(false, 'Valid user context is required', null, 400);
+    }
+
+    const userModelAny = this.userModel as any;
+    const user = await userModelAny
+      .findById(userId)
+      .select('fullname onboardingComplete')
+      .lean()
+      .exec();
+
+    if (!user) {
+      return createAppResponse(false, 'User not found', null, 404);
+    }
+
+    const fullname = this.toClientFullname(user.fullname as any);
+    const missingFields = [
+      !fullname.firstName ? 'firstName' : null,
+      !fullname.lastName ? 'lastName' : null,
+    ].filter((value): value is string => Boolean(value));
+
+    return createAppResponse(
+      true,
+      'Onboarding status retrieved',
+      {
+        onboardingComplete: Boolean(user.onboardingComplete),
+        fullname,
+        missingFields,
+      },
+      200,
+    );
+  }
 }

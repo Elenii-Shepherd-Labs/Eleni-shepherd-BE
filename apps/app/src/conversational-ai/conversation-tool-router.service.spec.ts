@@ -233,4 +233,101 @@ describe('ConversationToolRouterService', () => {
       source: 'model',
     });
   });
+
+  it('accepts backend-owned onboarding tools from the planner', async () => {
+    llmService.isProviderConfigured.mockReturnValue(true);
+    llmService.generateToolPlanningResponse.mockResolvedValue({
+      success: true,
+      data: {
+        response: JSON.stringify({
+          toolCalls: [
+            {
+              name: 'get_onboarding_status',
+              args: {},
+            },
+          ],
+          shouldGenerateResponse: true,
+        }),
+      },
+    });
+
+    const result = await service.routeTurn({
+      userMessage: 'is my setup complete',
+      sessionMessages: [{ role: 'user', content: 'is my setup complete' }],
+      sessionContext: '',
+      clientState: {
+        onboardingPhase: 'assistant',
+        currentRoute: 'Settings',
+        hasVerifiedIdentity: true,
+      },
+    });
+
+    expect(result).toEqual({
+      toolCalls: [
+        {
+          name: 'get_onboarding_status',
+          args: {},
+        },
+      ],
+      shouldGenerateResponse: true,
+      source: 'model',
+    });
+  });
+
+  it('accepts health reminder creation tools from the planner', async () => {
+    llmService.isProviderConfigured.mockReturnValue(true);
+    llmService.generateToolPlanningResponse.mockResolvedValue({
+      success: true,
+      data: {
+        response: JSON.stringify({
+          toolCalls: [
+            {
+              name: 'create_health_reminder',
+              args: {
+                title: 'Blood pressure medication',
+                time: '08:00',
+                type: 'medication',
+                notes: 'Take after breakfast',
+              },
+            },
+          ],
+          shouldGenerateResponse: true,
+        }),
+      },
+    });
+
+    const result = await service.routeTurn({
+      userMessage:
+        'remind me to take my blood pressure medication at 8 AM after breakfast',
+      sessionMessages: [
+        {
+          role: 'user',
+          content:
+            'remind me to take my blood pressure medication at 8 AM after breakfast',
+        },
+      ],
+      sessionContext: '',
+      clientState: {
+        onboardingPhase: 'assistant',
+        currentRoute: 'Home',
+        hasVerifiedIdentity: true,
+      },
+    });
+
+    expect(result).toEqual({
+      toolCalls: [
+        {
+          name: 'create_health_reminder',
+          args: {
+            title: 'Blood pressure medication',
+            time: '08:00',
+            type: 'medication',
+            notes: 'Take after breakfast',
+          },
+        },
+      ],
+      shouldGenerateResponse: true,
+      source: 'model',
+    });
+  });
 });

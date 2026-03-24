@@ -21,8 +21,18 @@ export type ConversationToolCall =
   | { name: 'check_tester_updates'; args: Record<string, never> }
   | { name: 'get_subscription_status'; args: Record<string, never> }
   | { name: 'get_allowed_languages'; args: Record<string, never> }
+  | { name: 'get_onboarding_status'; args: Record<string, never> }
   | { name: 'get_health_reminders'; args: Record<string, never> }
-  | { name: 'check_symptoms'; args: { symptoms: string } };
+  | { name: 'check_symptoms'; args: { symptoms: string } }
+  | {
+      name: 'create_health_reminder';
+      args: {
+        title: string;
+        time: string;
+        type?: 'medication' | 'appointment' | 'other';
+        notes?: string;
+      };
+    };
 
 export type ConversationClientState = {
   currentRoute?: string;

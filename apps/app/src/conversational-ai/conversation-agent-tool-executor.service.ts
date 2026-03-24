@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { LANGUAGE_NAMES } from '../subscription/subscription.constants';
 import { SubscriptionService } from '../subscription/subscription.service';
+import { ReminderType } from '../telehealth/dto/create-reminder.dto';
 import { TelehealthService } from '../telehealth/telehealth.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 import {
   ConversationClientAction,
   ConversationClientState,
@@ -19,6 +21,7 @@ export class ConversationAgentToolExecutorService {
   constructor(
     private readonly subscriptionService: SubscriptionService,
     private readonly telehealthService: TelehealthService,
+    private readonly onboardingService: OnboardingService,
   ) {}
 
   async executeToolCalls(
@@ -161,6 +164,53 @@ export class ConversationAgentToolExecutorService {
           summary: `allowed languages are ${languageNames.join(', ')} on the ${tier} tier`,
         };
       }
+      case 'get_onboarding_status': {
+        if (!options.userId) {
+          return {
+            actions: [],
+            summary:
+              'no authenticated user is available for onboarding lookup yet',
+          };
+        }
+
+        const onboardingResponse = await this.onboardingService.getOnboardingStatus(
+          options.userId,
+        );
+        const onboardingData = onboardingResponse.data as
+          | {
+              onboardingComplete?: boolean;
+              fullname?: {
+                firstName?: string;
+                lastName?: string;
+                middleName?: string;
+              };
+              missingFields?: string[];
+            }
+          | undefined;
+
+        if (!onboardingResponse.success || !onboardingData) {
+          return {
+            actions: [],
+            summary: 'onboarding status is unavailable right now',
+          };
+        }
+
+        const displayName = [
+          onboardingData.fullname?.firstName,
+          onboardingData.fullname?.middleName,
+          onboardingData.fullname?.lastName,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+
+        return {
+          actions: [],
+          summary: onboardingData.onboardingComplete
+            ? `onboarding is complete${displayName ? ` for ${displayName}` : ''}`
+            : `onboarding is still in progress${onboardingData.missingFields?.length ? ` and still needs ${onboardingData.missingFields.join(', ')}` : ''}`,
+        };
+      }
       case 'get_health_reminders': {
         if (!options.userId) {
           return {
@@ -208,6 +258,36 @@ export class ConversationAgentToolExecutorService {
           summary: `symptom guidance: ${guidance}`,
         };
       }
+      case 'create_health_reminder': {
+        if (!options.userId) {
+          return {
+            actions: [],
+            summary:
+              'no authenticated user is available to create a health reminder yet',
+          };
+        }
+
+        const createReminderResponse =
+          await this.telehealthService.createReminder({
+            userId: options.userId,
+            title: toolCall.args.title,
+            time: toolCall.args.time,
+            type: toReminderType(toolCall.args.type),
+            notes: toolCall.args.notes,
+          });
+
+        if (!createReminderResponse.success) {
+          return {
+            actions: [],
+            summary: 'health reminder creation failed',
+          };
+        }
+
+        return {
+          actions: [],
+          summary: `created a ${toolCall.args.type || 'health'} reminder for ${toolCall.args.title} at ${toolCall.args.time}`,
+        };
+      }
       default:
         return unreachableTool(toolCall);
     }
@@ -251,12 +331,29 @@ function buildActionAcknowledgement(
       return 'Checking your subscription details now.';
     case 'get_allowed_languages':
       return 'Checking your available languages now.';
+    case 'get_onboarding_status':
+      return 'Checking your setup status now.';
     case 'get_health_reminders':
       return 'Checking your health reminders now.';
     case 'check_symptoms':
       return 'Checking your symptoms now.';
+    case 'create_health_reminder':
+      return `Creating a reminder for ${toolCall.args.title} now.`;
     default:
       return unreachableTool(toolCall);
+  }
+}
+
+function toReminderType(
+  value: 'medication' | 'appointment' | 'other' | undefined,
+): ReminderType {
+  switch (value) {
+    case 'medication':
+      return ReminderType.MEDICATION;
+    case 'appointment':
+      return ReminderType.APPOINTMENT;
+    default:
+      return ReminderType.OTHER;
   }
 }
 
